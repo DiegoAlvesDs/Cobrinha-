@@ -1,0 +1,773 @@
+import pygame
+import random
+import sys
+import os
+
+pygame.init()
+
+# ===================== TELA =====================
+info = pygame.display.Info()
+LARGURA = info.current_w
+ALTURA = info.current_h
+
+tela = pygame.display.set_mode((LARGURA, ALTURA), pygame.FULLSCREEN)
+pygame.display.set_caption("Cobrinha Infinita PRO")
+
+clock = pygame.time.Clock()
+
+# ===================== CORES =====================
+PRETO = (0, 0, 0)
+BRANCO = (255, 255, 255)
+VERMELHO = (255, 60, 60)
+
+CINZA1 = (30, 30, 30)
+CINZA2 = (45, 45, 45)
+
+temas = {
+
+    "Dark": {
+        "fundo": (10, 10, 15),
+        "c1": (25, 25, 35),
+        "c2": (45, 45, 55),
+        "borda": (230, 230, 230)
+    },
+
+    "Grama": {
+        "fundo": (5, 35, 5),
+        "c1": (20, 80, 20),
+        "c2": (30, 110, 30),
+        "borda": (200, 255, 200)
+    },
+
+    "Oceano": {
+        "fundo": (0, 15, 40),
+        "c1": (0, 45, 90),
+        "c2": (0, 80, 130),
+        "borda": (180, 230, 255)
+    },
+
+    "Lava": {
+        "fundo": (30, 5, 5),
+        "c1": (90, 20, 20),
+        "c2": (130, 40, 10),
+        "borda": (255, 200, 100)
+    },
+
+    "Galaxia": {
+        "fundo": (5, 5, 25),
+        "c1": (20, 15, 60),
+        "c2": (45, 25, 100),
+        "borda": (200, 150, 255)
+    },
+
+    "Neon": {
+        "fundo": (5, 5, 15),
+        "c1": (0, 80, 120),
+        "c2": (120, 0, 150),
+        "borda": (0, 255, 255)
+    },
+
+    "Gelo": {
+        "fundo": (5, 25, 45),
+        "c1": (50, 150, 200),
+        "c2": (100, 210, 255),
+        "borda": (230, 255, 255)
+    },
+
+    "Floresta": {
+        "fundo": (10, 30, 10),
+        "c1": (30, 100, 40),
+        "c2": (70, 150, 70),
+        "borda": (180, 255, 180)
+    }
+
+}
+
+tema = "Grama"
+
+
+PRETO = temas[tema]["fundo"]
+CINZA1 = temas[tema]["c1"]
+CINZA2 = temas[tema]["c2"]
+BRANCO = temas[tema]["borda"]
+
+# ===================== CONFIG =====================
+TAMANHO = 20
+
+dificuldades = {
+    "Fácil": 8,
+    "Normal": 13,
+    "Difícil": 18,
+    "Insano": 25
+}
+
+dificuldade = "Normal"
+FPS = dificuldades[dificuldade]
+
+fonte = pygame.font.SysFont("arial", 25)
+fonte_grande = pygame.font.SysFont("arial", 60)
+# ===================== RANK =====================
+ARQUIVO = "ranking.txt"
+ranking = []
+
+def carregar():
+    global ranking
+    ranking = []
+
+    if not os.path.exists(ARQUIVO):
+        return
+
+    with open(ARQUIVO, "r", encoding="utf-8") as f:
+        for l in f:
+            partes = l.strip().split(";")
+
+            if len(partes) != 2:
+                continue
+
+            n, p = partes
+
+            if p.isdigit():
+                ranking.append((n, int(p)))
+
+def salvar(nome, pts):
+
+    ranking.append((nome, pts))
+    ranking.sort(key=lambda x: x[1], reverse=True)
+
+    with open(ARQUIVO, "w", encoding="utf-8") as f:
+
+        for n, p in ranking:
+            f.write(f"{n};{p}\n")
+
+carregar()
+
+# ===================== ESTADO =====================
+estado = "MENU"
+nome = ""
+
+pause = False
+
+# ===================== BOTÕES =====================
+btn_play = pygame.Rect(LARGURA//2 - 100, ALTURA//2 + 40, 200, 60)
+btn_rank = pygame.Rect(LARGURA//2 - 100, ALTURA//2 + 120, 200, 60)
+btn_tema = pygame.Rect(LARGURA//2 - 100, ALTURA//2 + 200, 200, 60)
+btn_dificuldade = pygame.Rect(LARGURA//2 - 140, ALTURA//2 + 280, 280, 60)
+
+btn_cont = pygame.Rect(LARGURA//2 - 100, ALTURA//2 - 120, 200, 60)
+btn_reset = pygame.Rect(LARGURA//2 - 100, ALTURA//2 - 40, 200, 60)
+btn_menu = pygame.Rect(LARGURA//2 - 100, ALTURA//2 + 40, 200, 60)
+
+# ===================== MENU ÁREA =====================
+menu_area = pygame.Rect(0, 0, 330, 120)
+
+# ===================== FUNÇÕES =====================
+cores = [
+    (0, 255, 0),
+    (0, 150, 255),
+    (255, 0, 255),
+    (255, 255, 0),
+    (255, 120, 0),
+    (255, 0, 0),
+    (0, 255, 255)
+]
+
+def nova_cor():
+    return random.choice(cores)
+
+def posicao_valida(x, y):
+
+    rect = pygame.Rect(
+        x,
+        y,
+        TAMANHO,
+        TAMANHO
+    )
+
+    if rect.colliderect(menu_area):
+        return False
+
+    return True
+
+def gerar_maca():
+
+    global maca
+
+    while True:
+
+        # Margem de segurança
+        margem = TAMANHO * 5
+
+        # Diminui a margem quando o mapa ficar pequeno
+        margem = min(margem, area_largura // 4, area_altura // 4)
+
+        x = random.randrange(
+            area_x + margem,
+            area_x + area_largura - margem,
+            TAMANHO
+        )
+
+        y = random.randrange(
+            area_y + margem,
+            area_y + area_altura - margem,
+            TAMANHO
+        )
+
+        if posicao_valida(x, y) and [x, y] not in cobra:
+
+            maca = (x, y)
+            break
+
+def gerar_maca_rgb():
+
+    global maca_rgb
+
+    while True:
+
+        x = random.randrange(
+            area_x,
+            area_x + area_largura,
+            TAMANHO
+        )
+
+        y = random.randrange(
+            area_y,
+            area_y + area_altura,
+            TAMANHO
+        )
+
+        if posicao_valida(x, y) and [x, y] not in cobra:
+
+            maca_rgb = (x, y)
+            break
+
+# ===================== RESET =====================
+def reset():
+
+    global cobra
+    global direcao
+    global prox
+
+    global pontos
+    global cor
+
+    global area_x
+    global area_y
+    global area_largura
+    global area_altura
+
+    global ultimo_encolhimento
+    global tempo_inicio
+
+    global rgb_ativa
+    global crescer
+
+    cobra = [
+        [400, 300],
+        [380, 300],
+        [360, 300]
+    ]
+
+    direcao = "DIREITA"
+    prox = "DIREITA"
+
+    pontos = 0
+    crescer = 0
+
+    cor = nova_cor()
+
+    area_x = 0
+    area_y = 0
+
+    area_largura = LARGURA
+    area_altura = ALTURA
+
+    ultimo_encolhimento = pygame.time.get_ticks()
+    tempo_inicio = pygame.time.get_ticks()
+
+    rgb_ativa = False
+
+    gerar_maca()
+
+reset()
+
+# ===================== LOOP =====================
+rodando = True
+
+while rodando:
+
+    clock.tick(FPS)
+
+    # ===================== MENU =====================
+    if estado == "MENU":
+
+        tela.fill((15,15,20))
+
+        titulo = fonte_grande.render(
+            "PYTHON SNAKE",
+            True,
+            BRANCO
+        )
+
+        tela.blit(
+            titulo,
+            (
+                LARGURA//2 - titulo.get_width()//2,
+                120
+            )
+        )
+
+        tela.blit(
+            fonte.render(f"Nome: {nome}_", True, BRANCO),
+            (LARGURA//2 - 120, 260)
+        ) 
+
+        pygame.draw.rect(tela, CINZA1, btn_play)
+        pygame.draw.rect(tela, CINZA1, btn_rank)
+        pygame.draw.rect(tela, CINZA1, btn_tema)
+        pygame.draw.rect(tela, CINZA1, btn_dificuldade)
+
+        tela.blit(
+            fonte.render("PLAY", True, BRANCO),
+            (btn_play.centerx - 30, btn_play.centery - 10)
+        )
+
+        tela.blit(
+            fonte.render("RANK", True, BRANCO),
+            (btn_rank.centerx - 35, btn_rank.centery - 10)
+        )   
+
+        tela.blit(
+            fonte.render(f"TEMA: {tema}", True, BRANCO),
+            (btn_tema.centerx - 80, btn_tema.centery - 10)
+        )
+        
+
+        tela.blit(
+            fonte.render(f"DIFICULDADE: {dificuldade}", True, BRANCO),
+            (btn_dificuldade.centerx - 90, btn_dificuldade.centery - 10)
+        )
+
+        for e in pygame.event.get():
+
+            if e.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+            if e.type == pygame.KEYDOWN:
+
+                if e.key == pygame.K_BACKSPACE:
+                    nome = nome[:-1]
+
+                elif len(nome) < 12:
+                    nome += e.unicode
+
+            if e.type == pygame.MOUSEBUTTONDOWN:
+
+                m = pygame.mouse.get_pos()
+
+                if btn_play.collidepoint(m) and nome.strip():
+
+                    estado = "JOGO"
+                    reset()
+
+                if btn_rank.collidepoint(m):
+
+                    carregar()
+                    estado = "RANK"
+
+                if btn_tema.collidepoint(m):
+
+                    lista_temas = list(temas.keys())
+
+                    atual = lista_temas.index(tema)
+
+                    atual += 1
+
+                    if atual >= len(lista_temas):
+                        atual = 0
+
+                    tema = lista_temas[atual]
+
+                    PRETO = temas[tema]["fundo"]
+                    CINZA1 = temas[tema]["c1"]
+                    CINZA2 = temas[tema]["c2"]
+                    BRANCO = temas[tema]["borda"]
+
+
+
+                if btn_dificuldade.collidepoint(m):
+
+                    lista_dificuldades = list(dificuldades.keys())
+
+                    atual = lista_dificuldades.index(dificuldade)
+
+                    atual += 1
+
+                    if atual >= len(lista_dificuldades):
+                        atual = 0
+
+                    dificuldade = lista_dificuldades[atual]
+
+                    FPS = dificuldades[dificuldade]
+
+                    print("Dificuldade:", dificuldade, "FPS:", FPS)
+
+        pygame.display.update()
+        continue
+
+    # ===================== RANK =====================
+    if estado == "RANK":
+
+        tela.fill(PRETO)
+
+        titulo = fonte_grande.render(
+            "RANKING",
+            True,
+            BRANCO
+        )
+
+        tela.blit(
+            titulo,
+            (
+                LARGURA//2 - titulo.get_width()//2,
+                60
+            )
+        )
+
+        y = 180
+
+        for i, (n, p) in enumerate(ranking):
+
+            tela.blit(
+                fonte.render(
+                    f"{i+1}. {n} - {p}",
+                    True,
+                    BRANCO
+                ),
+                (120, y)
+            )
+
+            y += 40
+
+        tela.blit(
+            fonte.render(
+                "ESC para voltar",
+                True,
+                BRANCO
+            ),
+            (120, ALTURA - 100)
+        )
+
+        for e in pygame.event.get():
+
+            if e.type == pygame.KEYDOWN:
+
+                if e.key == pygame.K_ESCAPE:
+                    estado = "MENU"
+
+        pygame.display.update()
+        continue
+
+    # ===================== PAUSE =====================
+    if pause:
+
+        tela.fill(PRETO)
+
+        t = fonte_grande.render(
+            "PAUSADO",
+            True,
+            BRANCO
+        )
+
+        tela.blit(
+            t,
+            (
+                LARGURA//2 - t.get_width()//2,
+                120
+            )
+        )
+
+        pygame.draw.rect(tela, CINZA1, btn_cont)
+        pygame.draw.rect(tela, CINZA1, btn_reset)
+        pygame.draw.rect(tela, CINZA1, btn_menu)
+
+        tela.blit(
+            fonte.render("CONTINUAR", True, BRANCO),
+            (btn_cont.centerx - 70, btn_cont.centery - 10)
+        )
+
+        tela.blit(
+            fonte.render("RESET", True, BRANCO),
+            (btn_reset.centerx - 40, btn_reset.centery - 10)
+        )
+
+        tela.blit(
+            fonte.render("MENU", True, BRANCO),
+            (btn_menu.centerx - 40, btn_menu.centery - 10)
+        )
+
+        for e in pygame.event.get():
+
+            if e.type == pygame.MOUSEBUTTONDOWN:
+
+                m = pygame.mouse.get_pos()
+
+                if btn_cont.collidepoint(m):
+                    pause = False
+
+                if btn_reset.collidepoint(m):
+
+                    reset()
+                    pause = False
+
+                if btn_menu.collidepoint(m):
+
+                    salvar(nome, pontos)
+
+                    estado = "MENU"
+                    pause = False
+
+        pygame.display.update()
+        continue
+
+    # ===================== INPUT =====================
+    tempo_atual = pygame.time.get_ticks()
+
+    if tempo_atual - ultimo_encolhimento >= 60000:
+
+        area_x += TAMANHO * 2
+        area_y += TAMANHO * 2
+
+        area_largura -= TAMANHO * 4
+        area_altura -= TAMANHO * 4
+
+        ultimo_encolhimento = tempo_atual
+
+        # Verifica se a maçã normal ficou fora da área
+        if (
+            maca[0] < area_x
+            or maca[0] >= area_x + area_largura
+            or maca[1] < area_y
+            or maca[1] >= area_y + area_altura
+        ):
+            gerar_maca()
+
+        # Verifica se a maçã RGB ficou fora da área
+        if rgb_ativa:
+            if (
+                maca_rgb[0] < area_x
+                or maca_rgb[0] >= area_x + area_largura
+                or maca_rgb[1] < area_y
+                or maca_rgb[1] >= area_y + area_altura
+            ):
+                gerar_maca_rgb()
+
+    for e in pygame.event.get():
+
+        if e.type == pygame.QUIT:
+
+            pygame.quit()
+            sys.exit()
+
+        if e.type == pygame.KEYDOWN:
+
+            if e.key == pygame.K_ESCAPE:
+                pause = True
+
+            if e.key in (pygame.K_UP, pygame.K_w):
+
+                if direcao != "BAIXO":
+                    prox = "CIMA"
+
+            if e.key in (pygame.K_DOWN, pygame.K_s):
+
+                if direcao != "CIMA":
+                    prox = "BAIXO"
+
+            if e.key in (pygame.K_LEFT, pygame.K_a):
+
+                if direcao != "DIREITA":
+                    prox = "ESQUERDA"
+
+            if e.key in (pygame.K_RIGHT, pygame.K_d):
+
+                if direcao != "ESQUERDA":
+                    prox = "DIREITA"
+
+    # ===================== MOVIMENTO =====================
+    direcao = prox
+
+    x, y = cobra[0]
+
+    if direcao == "CIMA":
+        y -= TAMANHO
+
+    if direcao == "BAIXO":
+        y += TAMANHO
+
+    if direcao == "ESQUERDA":
+        x -= TAMANHO
+
+    if direcao == "DIREITA":
+        x += TAMANHO
+
+    if (
+        x < area_x
+        or x >= area_x + area_largura
+        or y < area_y
+        or y >= area_y + area_altura
+    ):
+
+        salvar(nome, pontos)
+        estado = "MENU"
+        continue
+
+    head = [x, y]
+    cobra.insert(0, head)
+
+    # ===================== FRUTA NORMAL =====================
+    if (x, y) == maca:
+
+        pontos += 1
+        crescer += 1
+
+        cor = nova_cor()
+
+        gerar_maca()
+
+        if pontos % 10 == 0:
+
+            rgb_ativa = True
+            gerar_maca_rgb()
+
+    # ===================== FRUTA RGB =====================
+    if rgb_ativa and (x, y) == maca_rgb:
+
+        pontos += 5
+        crescer += 5
+
+        cor = nova_cor()
+
+        rgb_ativa = False
+
+        gerar_maca()
+
+    # ===================== CRESCIMENTO =====================
+    if crescer > 0:
+        crescer -= 1
+    else:
+        cobra.pop()
+
+    # ===================== COLISÃO =====================
+    for p in cobra[1:]:
+
+        if p == head:
+
+            salvar(nome, pontos)
+            estado = "MENU"
+
+    # ===================== DESENHO =====================
+    tela.fill(PRETO)
+
+    for yy in range(
+        area_y,
+        area_y + area_altura,
+        TAMANHO
+    ):
+
+        for xx in range(
+            area_x,
+            area_x + area_largura,
+            TAMANHO
+        ):
+
+            c = (
+                CINZA1
+                if (xx+yy)//TAMANHO % 2 == 0
+                else CINZA2
+            )
+
+            pygame.draw.rect(
+                tela,
+                c,
+                (xx, yy, TAMANHO, TAMANHO)
+            )
+
+    pygame.draw.rect(
+        tela,
+        BRANCO,
+        (
+            area_x,
+            area_y,
+            area_largura,
+            area_altura
+        ),
+        4
+    )
+
+    for p in cobra:
+
+        pygame.draw.rect(
+            tela,
+            cor,
+            (
+                p[0],
+                p[1],
+                TAMANHO,
+                TAMANHO
+            )
+        )
+
+    pygame.draw.rect(
+        tela,
+        VERMELHO,
+        (
+            maca[0],
+            maca[1],
+            TAMANHO,
+            TAMANHO
+        )
+    )
+
+    if rgb_ativa:
+
+        rgb_cor = (
+            random.randint(0,255),
+            random.randint(0,255),
+            random.randint(0,255)
+        )
+
+        pygame.draw.rect(
+            tela,
+            rgb_cor,
+            (
+                maca_rgb[0],
+                maca_rgb[1],
+                TAMANHO,
+                TAMANHO
+            )
+        )
+
+    tempo_segundos = (
+        pygame.time.get_ticks() - tempo_inicio
+    ) // 1000
+
+    tela.blit(
+        fonte.render(
+            f"Pontos: {pontos}",
+            True,
+            BRANCO
+        ),
+        (20, 20)
+    )
+
+    tela.blit(
+        fonte.render(
+            f"Tempo: {tempo_segundos}s",
+            True,
+            BRANCO
+        ),
+        (20, 60)
+    )
+
+    pygame.display.update()
