@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+    >
+
+    <title>Cobrinha Infinita PRO</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="app">
+
+        <header>
+            <b>🐍 COBRINHA INFINITA PRO</b>
+
+            <span>
+                <button id="menu">☰</button>
+                <button id="pause">Ⅱ</button>
+            </span>
+        </header>
+
+
+        <section id="home" class="screen">
+
+            <h1>PYTHON SNAKE</h1>
+
+            <p>Cobrinha Infinita PRO</p>
+
+            <input
+                id="name"
+                maxlength="12"
+                placeholder="Nome do jogador"
+            >
+
+            <button id="play">▶ PLAY</button>
+
+            <button id="rank">🏆 RANKING</button>
+
+            <button id="theme">
+                🎨 TEMA: <i></i>
+            </button>
+
+            <button id="diff">
+                ⚡ DIFICULDADE: <i></i>
+            </button>
+
+            <small>
+                Deslize para controlar a cobra
+            </small>
+
+        </section>
+
+
+        <section id="ranking" class="screen hide">
+
+            <h2>🏆 RANKING</h2>
+
+            <div id="scores"></div>
+
+            <button id="back">
+                ← VOLTAR
+            </button>
+
+        </section>
+
+
+        <section id="game" class="hide">
+
+            <div class="hud">
+
+                <span>
+                    Pontos:
+                    <b id="score">0</b>
+                </span>
+
+                <span>
+                    Tempo:
+                    <b id="time">0s</b>
+                </span>
+
+                <span id="dh">
+                    Normal
+                </span>
+
+            </div>
+
+
+            <div id="wrap">
+
+                <canvas id="canvas"></canvas>
+
+                <label>
+                    MAPA 40×40
+                </label>
+
+            </div>
+
+
+            <button id="pause2">
+                Ⅱ
+            </button>
+
+        </section>
+
+
+        <div id="overlay" class="hide">
+
+            <div>
+
+                <h2>PAUSADO</h2>
+
+                <button id="cont">
+                    ▶ CONTINUAR
+                </button>
+
+                <button id="reset">
+                    ↻ RESET
+                </button>
+
+                <button id="tomenu">
+                    ☰ MENU
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <script src="script.js"></script>
+
+</body>
+
+  </html>
+  
