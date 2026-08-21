@@ -1,4 +1,119 @@
 /* =========================================================
+   SUPABASE
+========================================================= */
+
+const SUPABASE_URL =
+    'https://yfijtchpwohulhzamlre.supabase.co';
+
+const SUPABASE_KEY =
+    'sb_publishable_5kL_MJ5oYHzD0X5OCecCmQ_TZ5h-HiI';
+
+
+async function salvarRanking(nome, pontuacao) {
+
+    try {
+
+        const resposta =
+            await fetch(
+                `${SUPABASE_URL}/rest/v1/ranking`,
+                {
+                    method: 'POST',
+
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization':
+                            `Bearer ${SUPABASE_KEY}`,
+                        'Content-Type':
+                            'application/json',
+                        'Prefer':
+                            'return=minimal'
+                    },
+
+                    body:
+                        JSON.stringify({
+                            nome: nome,
+                            pontuacao: pontuacao,
+                            dificuldade: diff
+                        })
+                }
+            );
+
+
+        if (!resposta.ok) {
+
+            const erro =
+                await resposta.text();
+
+            console.error(
+                'Erro ao salvar ranking:',
+                erro
+            );
+
+        }
+
+    } catch (erro) {
+
+        console.error(
+            'Erro de conexão com Supabase:',
+            erro
+        );
+
+    }
+
+}
+
+
+async function carregarRanking() {
+
+    try {
+
+        const resposta =
+            await fetch(
+                `${SUPABASE_URL}/rest/v1/ranking?select=nome,pontuacao,dificuldade,criado_em&order=pontuacao.desc,criado_em.asc&limit=20`,
+                {
+                    method: 'GET',
+
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization':
+                            `Bearer ${SUPABASE_KEY}`
+                    }
+                }
+            );
+
+
+        if (!resposta.ok) {
+
+            const erro =
+                await resposta.text();
+
+            console.error(
+                'Erro ao carregar ranking:',
+                erro
+            );
+
+            return [];
+
+        }
+
+
+        return await resposta.json();
+
+    } catch (erro) {
+
+        console.error(
+            'Erro de conexão com Supabase:',
+            erro
+        );
+
+        return [];
+
+    }
+
+}
+
+
+/* =========================================================
    TEMAS
 ========================================================= */
 
@@ -100,17 +215,6 @@ const C = [
 const MAPA_INICIAL = 60;
 
 const MAPA_MINIMO = 20;
-
-
-/*
-   Tamanho visual do mapa.
-
-   0.65 = 65% da menor dimensão
-   disponível do jogo.
-
-   Isso deixa o mapa inteiro
-   visível sem aquele zoom grande.
-*/
 
 const MAPA_TAMANHO_TELA = 1;
 
@@ -342,11 +446,6 @@ function getMapArea() {
         cv.getBoundingClientRect();
 
 
-    /*
-       Pega a menor dimensão
-       disponível.
-    */
-
     const menor =
         Math.min(
             r.width,
@@ -354,21 +453,10 @@ function getMapArea() {
         );
 
 
-    /*
-       Usa apenas 65%.
-
-       Isso é o que reduz
-       o zoom.
-    */
-
     const tamanho =
         menor *
         MAPA_TAMANHO_TELA;
 
-
-    /*
-       Cada célula do mapa.
-    */
 
     const cell =
         tamanho /
@@ -793,11 +881,6 @@ function shrinkMap() {
     }
 
 
-    /*
-       Diminui 2 células
-       por minuto.
-    */
-
     mapSize -= 2;
 
 
@@ -806,10 +889,6 @@ function shrinkMap() {
     mapMax =
         mapSize - 1;
 
-
-    /*
-       Maçã fora do mapa.
-    */
 
     if (
 
@@ -825,10 +904,6 @@ function shrinkMap() {
 
     }
 
-
-    /*
-       RGB fora do mapa.
-    */
 
     if (
 
@@ -846,10 +921,6 @@ function shrinkMap() {
 
     }
 
-
-    /*
-       Cobra fora do novo mapa.
-    */
 
     if (
         s.some(
@@ -917,10 +988,6 @@ function move() {
     }
 
 
-    /*
-       COLISÃO
-    */
-
     if (
 
         h.x < 0 ||
@@ -961,19 +1028,9 @@ function move() {
 
     ) {
 
-        /*
-           Normal = +1
-           Insano = +2
-        */
-
         score +=
             D[diff][1];
 
-
-        /*
-           Crescimento acompanha
-           os pontos ganhos.
-        */
 
         grow +=
             D[diff][1];
@@ -990,11 +1047,6 @@ function move() {
 
         spawn();
 
-
-        /*
-           RGB aparece a cada
-           10 pontos.
-        */
 
         if (
 
@@ -1027,11 +1079,6 @@ function move() {
         h.y === rgb.y
 
     ) {
-
-        /*
-           Normal = +5
-           Insano = +10
-        */
 
         score +=
             5 *
@@ -1103,10 +1150,6 @@ function draw() {
         area.cell;
 
 
-    /*
-       FUNDO
-    */
-
     ctx.clearRect(
         0,
         0,
@@ -1127,9 +1170,9 @@ function draw() {
     );
 
 
-    /*
+    /* =====================================================
        MAPA
-    */
+    ===================================================== */
 
     for (
         let y = 0;
@@ -1168,9 +1211,9 @@ function draw() {
     }
 
 
-    /*
+    /* =====================================================
        BORDA
-    */
+    ===================================================== */
 
     ctx.strokeStyle =
         col(t[3]);
@@ -1297,10 +1340,6 @@ function draw() {
             );
 
 
-            /*
-               OLHOS
-            */
-
             if (
                 i === 0
             ) {
@@ -1402,10 +1441,6 @@ function loop(now) {
 
     if (!paused) {
 
-        /*
-           TIMER REAL
-        */
-
         gameTime =
             (
                 now -
@@ -1423,10 +1458,6 @@ function loop(now) {
         }
 
 
-        /*
-           MOVIMENTO
-        */
-
         if (
 
             now -
@@ -1443,11 +1474,6 @@ function loop(now) {
 
         }
 
-
-        /*
-           REDUÇÃO DO MAPA
-           A CADA 60 SEGUNDOS
-        */
 
         const reducoes =
             Math.floor(
@@ -1574,6 +1600,10 @@ function end() {
     run = false;
 
 
+    /* =====================================================
+       RANKING LOCAL
+    ===================================================== */
+
     rank.push({
 
         name,
@@ -1624,6 +1654,16 @@ function end() {
         JSON.stringify(
             rank
         );
+
+
+    /* =====================================================
+       RANKING GLOBAL SUPABASE
+    ===================================================== */
+
+    salvarRanking(
+        name,
+        score
+    );
 
 
     setTimeout(
@@ -1679,10 +1719,10 @@ function home() {
 
 
 /* =========================================================
-   RANKING
+   RANKING GLOBAL
 ========================================================= */
 
-function showRank() {
+async function showRank() {
 
     $('home')
         .classList
@@ -1699,69 +1739,100 @@ function showRank() {
         .remove('hide');
 
 
+    $('scores').innerHTML = `
+
+        <div class="row">
+
+            <span>
+                Carregando ranking...
+            </span>
+
+            <b>
+                ...
+            </b>
+
+        </div>
+
+    `;
+
+
+    const rankingGlobal =
+        await carregarRanking();
+
+
+    if (!rankingGlobal.length) {
+
+        $('scores').innerHTML = `
+
+            <div class="row">
+
+                <span>
+                    Nenhuma partida.
+                </span>
+
+                <b>
+                    —
+                </b>
+
+            </div>
+
+        `;
+
+        return;
+
+    }
+
+
     $('scores').innerHTML =
 
-        rank.length
+        rankingGlobal
+            .map(
+                (r, i) => {
 
-            ? rank
-                .map(
-                    (r, i) => {
-
-                        const safeName =
-                            String(
-                                r.name
-                            )
-                            .replace(
-                                /[<>&]/g,
-                                ''
-                            );
+                    const safeName =
+                        String(
+                            r.nome
+                        )
+                        .replace(
+                            /[<>&]/g,
+                            ''
+                        );
 
 
-                        const tempo =
-                            r.time !== undefined
-                                ? `${r.time}s`
-                                : '—';
+                    const dificuldade =
+                        String(
+                            r.dificuldade ||
+                            'Normal'
+                        )
+                        .replace(
+                            /[<>&]/g,
+                            ''
+                        );
 
 
-                        return `
+                    return `
 
-                            <div class="row">
+                        <div class="row">
 
-                                <span>
-                                    ${i + 1}.
-                                    ${safeName}
-                                </span>
+                            <span>
+                                ${i + 1}.
+                                ${safeName}
+                            </span>
 
-                                <b>
-                                    ${r.score}
-                                    pts
-                                    ·
-                                    ${tempo}
-                                </b>
+                            <b>
+                                ${r.pontuacao}
+                                pts
+                                ·
+                                ${dificuldade}
+                            </b>
 
-                            </div>
+                        </div>
 
-                        `;
+                    `;
 
-                    }
-                )
-                .join('')
-
-            : `
-
-                <div class="row">
-
-                    <span>
-                        Nenhuma partida.
-                    </span>
-
-                    <b>
-                        —
-                    </b>
-
-                </div>
-
-            `;
+                }
+            )
+            .join('');
 
 }
 
@@ -1778,10 +1849,6 @@ function togglePause() {
 
     }
 
-
-    /*
-       PAUSAR
-    */
 
     if (!paused) {
 
@@ -1801,10 +1868,6 @@ function togglePause() {
 
     }
 
-
-    /*
-       CONTINUAR
-    */
 
     const agora =
         performance.now();
