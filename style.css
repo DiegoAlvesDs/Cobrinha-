@@ -2,7 +2,6 @@
     box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
 }
-
 html,
 body {
     margin: 0;
@@ -14,12 +13,10 @@ body {
     font-family: Arial, sans-serif;
     touch-action: none;
 }
-
 button,
 input {
     font: inherit;
 }
-
 button {
     color: var(--text);
     background: rgba(0, 0, 0, .35);
@@ -28,14 +25,12 @@ button {
     padding: 12px;
     font-weight: 700;
 }
-
 .app {
     height: 100dvh;
     display: flex;
     flex-direction: column;
     background: var(--bg);
 }
-
 header {
     height: 58px;
     min-height: 58px;
@@ -46,7 +41,6 @@ header {
     background: #0006;
     border-bottom: 2px solid var(--border);
 }
-
 header button {
     width: 42px;
     height: 42px;
@@ -54,24 +48,20 @@ header button {
     margin-left: 5px;
     font-size: 20px;
 }
-
 .screen {
     text-align: center;
     overflow: auto;
     flex: 1;
     padding: 30px 18px;
 }
-
 .screen h1 {
     font-size: clamp(34px, 10vw, 58px);
     margin: 15px 0 5px;
 }
-
 .screen p {
     opacity: .7;
     margin-bottom: 25px;
 }
-
 .screen input {
     display: block;
     width: min(370px, 90vw);
@@ -85,74 +75,193 @@ header button {
     outline: 0;
     padding: 10px;
 }
-
 .screen > button {
     display: block;
     width: min(370px, 90vw);
     margin: 10px auto;
     min-height: 52px;
 }
-
 .screen small {
     display: block;
     margin-top: 20px;
     opacity: .7;
 }
-
 .hide {
     display: none !important;
 }
-
+.statusBar {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    margin: 0 auto 18px;
+    font-size: 15px;
+    opacity: .9;
+}
+.listaOpcoes {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: min(370px, 90vw);
+    margin: 0 auto;
+}
+.opcaoLista {
+    width: 100%;
+    text-align: left;
+}
+.opcaoLista.ativo {
+    border-color: #fff;
+    background: rgba(255, 255, 255, .15);
+}
+.listaSkinsContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: min(460px, 92vw);
+    margin: 0 auto;
+}
+.linhaSkin {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    background: rgba(0, 0, 0, .25);
+    text-align: left;
+}
+.linhaSkin.ativa {
+    border-color: #fff;
+    background: rgba(255, 255, 255, .15);
+}
+.infoSkin {
+    flex: 1;
+}
+.acaoSkin {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+}
+.tagSelecionada {
+    font-size: 11px;
+    font-weight: 700;
+    opacity: .8;
+}
+.infoBloqueio {
+    opacity: .7;
+    font-size: 11px;
+}
+.botaoSelecionar,
+.botaoComprar {
+    min-height: 36px;
+    padding: 6px 12px;
+    font-size: 13px;
+}
+.botaoComprar:disabled {
+    opacity: .4;
+}
+.previaSkin {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 8px;
+    border: 2px solid rgba(255, 255, 255, .3);
+}
+.previa-Solida {
+    background: #00c060;
+}
+.previa-Listrada {
+    background: repeating-linear-gradient(
+        45deg,
+        #00c060,
+        #00c060 6px,
+        #007a3c 6px,
+        #007a3c 12px
+    );
+}
+.previa-Retro {
+    background: #00c060;
+    border: 3px solid #000;
+}
+.previa-Gradiente {
+    background: linear-gradient(135deg, #00c060, #002010);
+}
+.previa-Gelo {
+    background: rgba(143, 220, 255, .75);
+    border-color: #e0faff;
+}
+.previa-Neon {
+    background: #00e0e0;
+    box-shadow: 0 0 12px 3px #00e0e0;
+}
+.previa-Espinhada {
+    background: #ff5030;
+    clip-path: polygon(
+        15% 0%, 85% 0%, 100% 15%, 100% 85%,
+        85% 100%, 15% 100%, 0% 85%, 0% 15%
+    );
+}
+.previa-Fantasma {
+    background: rgba(200, 200, 255, .4);
+    border-color: rgba(200, 200, 255, .9);
+}
+.previa-ArcoIris {
+    background: linear-gradient(
+        90deg,
+        #ff3b3b, #ff9f3b, #f6ff3b,
+        #3bff57, #3bb0ff, #8a3bff
+    );
+}
+.previa-Metalica {
+    background: linear-gradient(135deg, #ffffff, #8a8a94, #ffffff);
+}
+.previa-Fogo {
+    background: linear-gradient(135deg, #ff3c00, #ff9600, #ffdc3c);
+}
 #ranking {
     text-align: center;
 }
-
 #scores {
     width: min(500px, 92vw);
     margin: 20px auto;
     text-align: left;
     min-height: 200px;
 }
-
 .row {
     display: flex;
     justify-content: space-between;
     padding: 11px 8px;
     border-bottom: 1px solid #fff2;
 }
-
 #game {
     flex: 1;
     min-height: 0;
     display: flex;
     flex-direction: column;
 }
-
 .hud {
-    height: 48px;
     min-height: 48px;
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
-    padding: 0 10px;
+    gap: 4px 10px;
+    padding: 6px 10px;
     background: #0007;
-    font-size: clamp(13px, 4vw, 18px);
+    font-size: clamp(12px, 3.6vw, 18px);
 }
-
 #wrap {
     position: relative;
     flex: 1;
     min-height: 0;
     overflow: hidden;
 }
-
 canvas {
     display: block;
     width: 100%;
     height: 100%;
     touch-action: none;
 }
-
 #wrap label {
     position: absolute;
     left: 8px;
@@ -162,7 +271,6 @@ canvas {
     border-radius: 12px;
     font-size: 11px;
 }
-
 #pause2 {
     height: 52px;
     min-height: 52px;
@@ -170,7 +278,6 @@ canvas {
     margin: 0 auto 5px;
     font-size: 23px;
 }
-
 #overlay {
     position: fixed;
     inset: 0;
@@ -179,10 +286,6 @@ canvas {
     place-items: center;
     z-index: 20;
 }
-
-.overlay {
-}
-
 #overlay > div {
     width: min(390px, 92vw);
     padding: 25px;
@@ -191,14 +294,12 @@ canvas {
     border-radius: 20px;
     text-align: center;
 }
-
 #overlay h2 {
     font-size: 38px;
     margin: 0 0 18px;
 }
-
 #overlay button {
     display: block;
     width: 100%;
     margin: 10px 0;
-  }
+}
