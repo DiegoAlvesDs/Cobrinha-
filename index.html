@@ -1,38 +1,33 @@
 <!doctype html>
 <html lang="pt-BR">
-
 <head>
     <meta charset="UTF-8">
-
     <meta
         name="viewport"
         content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
     >
-
     <title>Cobrinha Infinita PRO</title>
-
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-
     <div class="app">
-
         <header>
             <b>🐍 COBRINHA INFINITA PRO</b>
-
             <span>
                 <button id="menu">☰</button>
                 <button id="pause">Ⅱ</button>
             </span>
         </header>
 
-
+        <!-- MENU PRINCIPAL -->
         <section id="home" class="screen">
-
             <h1>PYTHON SNAKE</h1>
-
             <p>Cobrinha Infinita PRO</p>
+
+            <div class="statusBar">
+                <span>🪙 <b id="homeCoins">0</b></span>
+                <span>⭐ Nível <b id="homeLevel">1</b></span>
+            </div>
 
             <input
                 id="name"
@@ -41,104 +36,102 @@
             >
 
             <button id="play">▶ PLAY</button>
-
+            <button id="openTema">🎨 TEMA</button>
+            <button id="openModo">🗺️ MODO DE MAPA</button>
+            <button id="openSkins">💎 SKINS</button>
+            <button id="openDiff">⚡ DIFICULDADE</button>
             <button id="rank">🏆 RANKING</button>
-
-            <button id="theme">
-                🎨 TEMA: <i></i>
-            </button>
-
-            <button id="diff">
-                ⚡ DIFICULDADE: <i></i>
-            </button>
 
             <small>
                 Deslize para controlar a cobra
             </small>
-
         </section>
 
+        <!-- MENU: TEMA -->
+        <section id="menuTema" class="screen hide">
+            <h2>🎨 TEMA</h2>
+            <div id="listaTemas" class="listaOpcoes"></div>
+            <button class="voltarMenu">← VOLTAR</button>
+        </section>
 
+        <!-- MENU: DIFICULDADE -->
+        <section id="menuDiff" class="screen hide">
+            <h2>⚡ DIFICULDADE</h2>
+            <div id="listaDificuldades" class="listaOpcoes"></div>
+            <button class="voltarMenu">← VOLTAR</button>
+        </section>
+
+        <!-- MENU: MODO DE MAPA -->
+        <section id="menuModo" class="screen hide">
+            <h2>🗺️ MODO DE MAPA</h2>
+            <div id="listaModos" class="listaOpcoes"></div>
+            <button class="voltarMenu">← VOLTAR</button>
+        </section>
+
+        <!-- MENU: SKINS -->
+        <section id="menuSkins" class="screen hide">
+            <h2>💎 SKINS</h2>
+
+            <div class="statusBar">
+                <span>🪙 <b id="skinsCoins">0</b></span>
+                <span>⭐ Nível <b id="skinsLevel">1</b></span>
+            </div>
+
+            <div id="listaSkins" class="listaSkinsContainer"></div>
+            <button class="voltarMenu">← VOLTAR</button>
+        </section>
+
+        <!-- RANKING -->
         <section id="ranking" class="screen hide">
-
             <h2>🏆 RANKING</h2>
-
             <div id="scores"></div>
-
-            <button id="back">
-                ← VOLTAR
-            </button>
-
+            <button id="back">← VOLTAR</button>
         </section>
 
-
+        <!-- JOGO -->
         <section id="game" class="hide">
-
             <div class="hud">
-
                 <span>
                     Pontos:
                     <b id="score">0</b>
                 </span>
-
                 <span>
                     Tempo:
                     <b id="time">0s</b>
                 </span>
-
+                <span id="lvl">
+                    Nível 1
+                </span>
                 <span id="dh">
                     Normal
                 </span>
-
             </div>
-
-
             <div id="wrap">
-
                 <canvas id="canvas"></canvas>
-
                 <label>
-                    MAPA 40×40
+                    MAPA 60×60
                 </label>
-
             </div>
-
-
             <button id="pause2">
                 Ⅱ
             </button>
-
         </section>
 
-
         <div id="overlay" class="hide">
-
             <div>
-
                 <h2>PAUSADO</h2>
-
                 <button id="cont">
                     ▶ CONTINUAR
                 </button>
-
                 <button id="reset">
                     ↻ RESET
                 </button>
-
                 <button id="tomenu">
                     ☰ MENU
                 </button>
-
             </div>
-
         </div>
-
     </div>
-
-
     <script src="script.js"></script>
-
 </body>
-
-  </html>
-  
+</html>
