@@ -209,6 +209,103 @@ const C = [
 
 
 /* =========================================================
+   MODOS DE MAPA
+========================================================= */
+
+const MAPMODES = [
+    'Classico',
+    'SemParede',
+    'Obstaculos',
+    'Labirinto'
+];
+
+const MAPMODE_LABEL = {
+    Classico: 'Clássico',
+    SemParede: 'Sem Parede',
+    Obstaculos: 'Obstáculos',
+    Labirinto: 'Labirinto'
+};
+
+
+/* =========================================================
+   SKINS DA COBRA
+========================================================= */
+
+const SKIN_INFO = {
+
+    Solida: {
+        nome: 'Sólida',
+        custo: 0,
+        nivel: 1
+    },
+
+    Listrada: {
+        nome: 'Listrada',
+        custo: 0,
+        nivel: 1
+    },
+
+    Retro: {
+        nome: 'Retrô',
+        custo: 20,
+        nivel: 2
+    },
+
+    Gradiente: {
+        nome: 'Gradiente',
+        custo: 30,
+        nivel: 2
+    },
+
+    Gelo: {
+        nome: 'Gelo',
+        custo: 45,
+        nivel: 3
+    },
+
+    Neon: {
+        nome: 'Neon',
+        custo: 50,
+        nivel: 3
+    },
+
+    Espinhada: {
+        nome: 'Espinhada',
+        custo: 60,
+        nivel: 4
+    },
+
+    Fantasma: {
+        nome: 'Fantasma',
+        custo: 75,
+        nivel: 5
+    },
+
+    ArcoIris: {
+        nome: 'Arco-íris',
+        custo: 90,
+        nivel: 5
+    },
+
+    Metalica: {
+        nome: 'Metálica',
+        custo: 110,
+        nivel: 6
+    },
+
+    Fogo: {
+        nome: 'Fogo',
+        custo: 130,
+        nivel: 7
+    }
+
+};
+
+const SKINS =
+    Object.keys(SKIN_INFO);
+
+
+/* =========================================================
    CONFIGURAÇÕES DO MAPA
 ========================================================= */
 
@@ -221,11 +318,6 @@ const MAPA_TAMANHO_TELA = 1;
 
 let mapSize =
     MAPA_INICIAL;
-
-let mapMin = 0;
-
-let mapMax =
-    MAPA_INICIAL - 1;
 
 
 /* =========================================================
@@ -245,6 +337,79 @@ let rank =
 
 let name =
     localStorage.snakeName || '';
+
+let mapMode =
+    localStorage.snakeMapMode || 'Classico';
+
+let skin =
+    localStorage.snakeSkin || 'Solida';
+
+
+/* =========================================================
+   MOEDAS / XP / SKINS POSSUÍDAS
+========================================================= */
+
+let coins =
+    parseInt(
+        localStorage.snakeCoins || '0',
+        10
+    );
+
+let totalXP =
+    parseInt(
+        localStorage.snakeXP || '0',
+        10
+    );
+
+let ownedSkins =
+    new Set(
+        JSON.parse(
+            localStorage.snakeOwnedSkins ||
+            '["Solida","Listrada"]'
+        )
+    );
+
+let coinsThisRun = 0;
+
+
+function playerLevel() {
+
+    return (
+        1 +
+        Math.floor(
+            totalXP / 100
+        )
+    );
+
+}
+
+
+function skinDesbloqueada(nomeSkin) {
+
+    return (
+
+        ownedSkins.has(nomeSkin) ||
+
+        playerLevel() >=
+        SKIN_INFO[nomeSkin].nivel
+
+    );
+
+}
+
+
+/* =========================================================
+   OBSTÁCULOS / LABIRINTO
+========================================================= */
+
+let obstacles = new Set();
+
+
+/* =========================================================
+   NÍVEL
+========================================================= */
+
+let level = 1;
 
 
 /* =========================================================
@@ -330,6 +495,229 @@ function col(a) {
 
 
 /* =========================================================
+   CORES PARA AS SKINS
+========================================================= */
+
+function hexParaRgb(hex) {
+
+    const v =
+        hex.replace('#', '');
+
+    return [
+        parseInt(v.substring(0, 2), 16),
+        parseInt(v.substring(2, 4), 16),
+        parseInt(v.substring(4, 6), 16)
+    ];
+
+}
+
+
+function corEscura(hex) {
+
+    const rgbArr =
+        hexParaRgb(hex);
+
+    return `rgb(
+        ${rgbArr[0] * 0.45 | 0},
+        ${rgbArr[1] * 0.45 | 0},
+        ${rgbArr[2] * 0.45 | 0}
+    )`;
+
+}
+
+
+function misturarComPreto(hex, fator) {
+
+    const rgbArr =
+        hexParaRgb(hex);
+
+    const f =
+        1 - fator;
+
+    return `rgb(
+        ${rgbArr[0] * f | 0},
+        ${rgbArr[1] * f | 0},
+        ${rgbArr[2] * f | 0}
+    )`;
+
+}
+
+
+/* =========================================================
+   DESENHAR SEGMENTO DA COBRA (por skin)
+========================================================= */
+
+function desenharSegmento(px, py, cell, i, tamanho) {
+
+    const m =
+        cell * 0.05;
+
+    const tam =
+        cell * 0.90;
+
+
+    if (skin === 'Listrada') {
+
+        ctx.fillStyle =
+            (i % 2 === 0)
+                ? color
+                : corEscura(color);
+
+        ctx.fillRect(px + m, py + m, tam, tam);
+
+    } else if (skin === 'Gradiente') {
+
+        const t2 =
+            tamanho > 1
+                ? i / (tamanho - 1)
+                : 0;
+
+        ctx.fillStyle =
+            misturarComPreto(color, t2 * 0.65);
+
+        ctx.fillRect(px + m, py + m, tam, tam);
+
+    } else if (skin === 'Neon') {
+
+        ctx.shadowBlur = cell * 0.6;
+        ctx.shadowColor = color;
+        ctx.fillStyle = color;
+
+        ctx.fillRect(px + m, py + m, tam, tam);
+
+    } else if (skin === 'Retro') {
+
+        /* Visual pixelado, tipo Nokia:
+           bloco sólido com borda grossa */
+
+        ctx.fillStyle = color;
+        ctx.fillRect(px + m, py + m, tam, tam);
+
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = Math.max(1, cell * 0.08);
+        ctx.strokeRect(px + m, py + m, tam, tam);
+
+    } else if (skin === 'Gelo') {
+
+        ctx.globalAlpha = 0.75;
+        ctx.fillStyle = '#8fdcff';
+        ctx.fillRect(px + m, py + m, tam, tam);
+
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = '#e0faff';
+        ctx.lineWidth = Math.max(1, cell * 0.06);
+        ctx.strokeRect(px + m * 1.5, py + m * 1.5, tam - m, tam - m);
+
+    } else if (skin === 'Espinhada') {
+
+        ctx.fillStyle = color;
+        ctx.fillRect(px + m, py + m, tam, tam);
+
+        ctx.fillStyle = corEscura(color);
+
+        const espinho =
+            cell * 0.18;
+
+        /* Espinhos nas duas laterais do segmento */
+
+        ctx.beginPath();
+        ctx.moveTo(px, py + cell / 2 - espinho);
+        ctx.lineTo(px - espinho, py + cell / 2);
+        ctx.lineTo(px, py + cell / 2 + espinho);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(px + cell, py + cell / 2 - espinho);
+        ctx.lineTo(px + cell + espinho, py + cell / 2);
+        ctx.lineTo(px + cell, py + cell / 2 + espinho);
+        ctx.closePath();
+        ctx.fill();
+
+    } else if (skin === 'Fantasma') {
+
+        ctx.globalAlpha = 0.45;
+        ctx.fillStyle = color;
+        ctx.fillRect(px + m, py + m, tam, tam);
+
+        ctx.globalAlpha = 0.9;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.max(1, cell * 0.06);
+        ctx.strokeRect(px + m, py + m, tam, tam);
+
+    } else if (skin === 'ArcoIris') {
+
+        const matiz =
+            (i * 18 + Date.now() / 15) % 360;
+
+        ctx.fillStyle =
+            `hsl(${matiz}, 80%, 55%)`;
+
+        ctx.fillRect(px + m, py + m, tam, tam);
+
+    } else if (skin === 'Metalica') {
+
+        const grad =
+            ctx.createLinearGradient(px, py, px + cell, py + cell);
+
+        grad.addColorStop(0, '#e8e8ee');
+        grad.addColorStop(0.35, misturarComPreto('#e8e8ee', 0.35));
+        grad.addColorStop(0.6, '#ffffff');
+        grad.addColorStop(1, misturarComPreto('#e8e8ee', 0.55));
+
+        ctx.fillStyle = grad;
+        ctx.fillRect(px + m, py + m, tam, tam);
+
+        ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px + m, py + m, tam, tam);
+
+    } else if (skin === 'Fogo') {
+
+        const onda =
+            Math.sin(Date.now() / 90 + i) * 0.5 + 0.5;
+
+        const fogoCores = [
+            [255, 60, 0],
+            [255, 150, 0],
+            [255, 220, 60]
+        ];
+
+        const idx =
+            onda * (fogoCores.length - 1);
+
+        const baixo =
+            fogoCores[Math.floor(idx)];
+
+        const alto =
+            fogoCores[Math.min(fogoCores.length - 1, Math.ceil(idx))];
+
+        const frac =
+            idx - Math.floor(idx);
+
+        const r = (baixo[0] + (alto[0] - baixo[0]) * frac) | 0;
+        const g = (baixo[1] + (alto[1] - baixo[1]) * frac) | 0;
+        const b = (baixo[2] + (alto[2] - baixo[2]) * frac) | 0;
+
+        ctx.shadowBlur = cell * 0.5;
+        ctx.shadowColor = `rgb(${r},${g},${b})`;
+        ctx.fillStyle = `rgb(${r},${g},${b})`;
+
+        ctx.fillRect(px + m, py + m, tam, tam);
+
+    } else {
+
+        /* Sólida (padrão) */
+
+        ctx.fillStyle = color;
+        ctx.fillRect(px + m, py + m, tam, tam);
+
+    }
+
+}
+
+
+/* =========================================================
    APLICAR TEMA
 ========================================================= */
 
@@ -377,18 +765,6 @@ function apply() {
             '--text',
             '#fff'
         );
-
-
-    $('theme')
-        .querySelector('i')
-        .textContent =
-        theme;
-
-
-    $('diff')
-        .querySelector('i')
-        .textContent =
-        diff;
 
 
     $('dh').textContent =
@@ -520,12 +896,276 @@ function rnd() {
    OCUPADO
 ========================================================= */
 
+function obsKey(x, y) {
+
+    return x + ',' + y;
+
+}
+
+
+function isObstacle(p) {
+
+    return obstacles.has(
+        obsKey(p.x, p.y)
+    );
+
+}
+
+
 function occupied(p) {
 
-    return s.some(
-        q =>
-            q.x === p.x &&
-            q.y === p.y
+    return (
+
+        s.some(
+            q =>
+                q.x === p.x &&
+                q.y === p.y
+        ) ||
+
+        isObstacle(p)
+
+    );
+
+}
+
+
+/* =========================================================
+   GERAR OBSTÁCULOS / LABIRINTO
+========================================================= */
+
+function gerarObstaculos() {
+
+    obstacles =
+        new Set();
+
+
+    if (
+        mapMode === 'Obstaculos'
+    ) {
+
+        const centro =
+            Math.floor(mapSize / 2);
+
+        const qtd =
+            Math.floor(mapSize * mapSize * 0.03) +
+            Math.floor(level * 1.5);
+
+        let tentativas = 0;
+
+
+        while (
+
+            obstacles.size < qtd &&
+            tentativas < qtd * 40
+
+        ) {
+
+            tentativas++;
+
+
+            const p =
+                rnd();
+
+
+            if (
+
+                Math.abs(p.x - centro) < 4 &&
+                Math.abs(p.y - centro) < 4
+
+            ) {
+
+                continue;
+
+            }
+
+
+            obstacles.add(
+                obsKey(p.x, p.y)
+            );
+
+        }
+
+    } else if (
+        mapMode === 'Labirinto'
+    ) {
+
+        gerarLabirinto();
+
+    }
+
+}
+
+
+function gerarLabirinto() {
+
+    const margem = 2;
+
+
+    function dividir(x0, y0, x1, y1) {
+
+        const largura =
+            x1 - x0;
+
+        const altura =
+            y1 - y0;
+
+
+        if (
+            largura < 6 ||
+            altura < 6
+        ) {
+
+            return;
+
+        }
+
+
+        const horizontal =
+            largura < altura;
+
+
+        if (horizontal) {
+
+            const wy =
+                y0 + 2 +
+                Math.floor(
+                    Math.random() *
+                    (altura - 4)
+                );
+
+            const gap =
+                x0 +
+                Math.floor(
+                    Math.random() *
+                    largura
+                );
+
+
+            for (
+                let x = x0;
+                x <= x1;
+                x++
+            ) {
+
+                if (
+                    x !== gap &&
+                    x !== gap + 1
+                ) {
+
+                    obstacles.add(
+                        obsKey(x, wy)
+                    );
+
+                }
+
+            }
+
+
+            dividir(x0, y0, x1, wy - 1);
+
+            dividir(x0, wy + 1, x1, y1);
+
+        } else {
+
+            const wx =
+                x0 + 2 +
+                Math.floor(
+                    Math.random() *
+                    (largura - 4)
+                );
+
+            const gap =
+                y0 +
+                Math.floor(
+                    Math.random() *
+                    altura
+                );
+
+
+            for (
+                let y = y0;
+                y <= y1;
+                y++
+            ) {
+
+                if (
+                    y !== gap &&
+                    y !== gap + 1
+                ) {
+
+                    obstacles.add(
+                        obsKey(wx, y)
+                    );
+
+                }
+
+            }
+
+
+            dividir(x0, y0, wx - 1, y1);
+
+            dividir(wx + 1, y0, x1, y1);
+
+        }
+
+    }
+
+
+    dividir(
+        margem,
+        margem,
+        mapSize - 1 - margem,
+        mapSize - 1 - margem
+    );
+
+
+    /* Limpa a área central para a
+       cobra não nascer dentro de
+       uma parede */
+
+    const centro =
+        Math.floor(mapSize / 2);
+
+
+    for (
+        let dx = -3;
+        dx <= 3;
+        dx++
+    ) {
+
+        for (
+            let dy = -2;
+            dy <= 2;
+            dy++
+        ) {
+
+            obstacles.delete(
+                obsKey(centro + dx, centro + dy)
+            );
+
+        }
+
+    }
+
+}
+
+
+/* =========================================================
+   VELOCIDADE (aumenta com o nível)
+========================================================= */
+
+function velocidadeAtual() {
+
+    const base =
+        D[diff][0];
+
+    const bonus =
+        (level - 1) * 0.8;
+
+
+    return Math.min(
+        base + bonus,
+        base + 12
     );
 
 }
@@ -551,6 +1191,20 @@ function spawn() {
         if (
             tentativas > 1000
         ) {
+
+            /* Mapa lotado: não há mais
+               espaço livre para a maçã.
+               Em vez de deixar a maçã
+               travada numa posição antiga,
+               encerramos a partida. */
+
+            food = null;
+
+            if (run) {
+
+                end();
+
+            }
 
             return;
 
@@ -584,6 +1238,15 @@ function spawnRgb() {
             tentativas > 1000
         ) {
 
+            /* Mapa lotado: cancela a
+               maçã bônus em vez de
+               deixá-la travada numa
+               posição antiga. */
+
+            rgbOn = false;
+
+            rgb = null;
+
             return;
 
         }
@@ -610,12 +1273,6 @@ function reset() {
 
     mapSize =
         MAPA_INICIAL;
-
-
-    mapMin = 0;
-
-    mapMax =
-        mapSize - 1;
 
 
     const c =
@@ -661,6 +1318,8 @@ function reset() {
 
     score = 0;
 
+    coinsThisRun = 0;
+
 
     color =
         C[
@@ -686,6 +1345,9 @@ function reset() {
     pausedAt = 0;
 
 
+    level = 1;
+
+
     start =
         performance.now();
 
@@ -693,6 +1355,8 @@ function reset() {
     lastMove =
         start;
 
+
+    gerarObstaculos();
 
     spawn();
 
@@ -884,10 +1548,7 @@ function shrinkMap() {
     mapSize -= 2;
 
 
-    mapMin = 0;
-
-    mapMax =
-        mapSize - 1;
+    gerarObstaculos();
 
 
     if (
@@ -896,7 +1557,9 @@ function shrinkMap() {
 
         food.x >= mapSize ||
 
-        food.y >= mapSize
+        food.y >= mapSize ||
+
+        isObstacle(food)
 
     ) {
 
@@ -912,7 +1575,8 @@ function shrinkMap() {
 
         (
             rgb.x >= mapSize ||
-            rgb.y >= mapSize
+            rgb.y >= mapSize ||
+            isObstacle(rgb)
         )
 
     ) {
@@ -926,7 +1590,8 @@ function shrinkMap() {
         s.some(
             p =>
                 p.x >= mapSize ||
-                p.y >= mapSize
+                p.y >= mapSize ||
+                isObstacle(p)
         )
     ) {
 
@@ -989,6 +1654,38 @@ function move() {
 
 
     if (
+        mapMode === 'SemParede'
+    ) {
+
+        /* Modo Sem Parede: atravessa
+           a borda e reaparece do
+           outro lado */
+
+        if (h.x < 0) {
+
+            h.x = mapSize - 1;
+
+        }
+
+        if (h.x >= mapSize) {
+
+            h.x = 0;
+
+        }
+
+        if (h.y < 0) {
+
+            h.y = mapSize - 1;
+
+        }
+
+        if (h.y >= mapSize) {
+
+            h.y = 0;
+
+        }
+
+    } else if (
 
         h.x < 0 ||
 
@@ -996,7 +1693,20 @@ function move() {
 
         h.y < 0 ||
 
-        h.y >= mapSize ||
+        h.y >= mapSize
+
+    ) {
+
+        end();
+
+        return;
+
+    }
+
+
+    if (
+
+        isObstacle(h) ||
 
         s.some(
             (p, i) =>
@@ -1034,6 +1744,9 @@ function move() {
 
         grow +=
             D[diff][1];
+
+
+        coinsThisRun += 2;
 
 
         color =
@@ -1088,6 +1801,9 @@ function move() {
         grow +=
             5 *
             D[diff][1];
+
+
+        coinsThisRun += 4;
 
 
         color =
@@ -1240,6 +1956,49 @@ function draw() {
 
 
     /* =====================================================
+       OBSTÁCULOS / LABIRINTO
+    ===================================================== */
+
+    if (obstacles.size) {
+
+        ctx.fillStyle =
+            'rgba(90, 90, 100, 0.95)';
+
+
+        obstacles.forEach(
+            key => {
+
+                const partes =
+                    key.split(',');
+
+                const ox =
+                    Number(partes[0]);
+
+                const oy =
+                    Number(partes[1]);
+
+
+                ctx.fillRect(
+
+                    area.x +
+                    ox * cell,
+
+                    area.y +
+                    oy * cell,
+
+                    Math.ceil(cell) + 1,
+
+                    Math.ceil(cell) + 1
+
+                );
+
+            }
+        );
+
+    }
+
+
+    /* =====================================================
        MAÇÃ
     ===================================================== */
 
@@ -1321,23 +2080,19 @@ function draw() {
                 p.y * cell;
 
 
-            ctx.fillStyle =
-                color;
+            ctx.save();
 
 
-            ctx.fillRect(
-
-                px +
-                cell * 0.05,
-
-                py +
-                cell * 0.05,
-
-                cell * 0.90,
-
-                cell * 0.90
-
+            desenharSegmento(
+                px,
+                py,
+                cell,
+                i,
+                s.length
             );
+
+
+            ctx.restore();
 
 
             if (
@@ -1410,6 +2165,10 @@ function hud() {
         ) + 's';
 
 
+    $('lvl').textContent =
+        'Nível ' + level;
+
+
     const label =
         document.querySelector(
             '#wrap label'
@@ -1419,7 +2178,7 @@ function hud() {
     if (label) {
 
         label.textContent =
-            `MAPA ${mapSize}×${mapSize}`;
+            `MAPA ${mapSize}×${mapSize} · ${MAPMODE_LABEL[mapMode]}`;
 
     }
 
@@ -1458,12 +2217,59 @@ function loop(now) {
         }
 
 
+        const novoNivel =
+            1 +
+            Math.floor(
+                gameTime / 20
+            );
+
+
+        if (
+            novoNivel !== level
+        ) {
+
+            level =
+                novoNivel;
+
+
+            if (
+
+                mapMode === 'Obstaculos' ||
+                mapMode === 'Labirinto'
+
+            ) {
+
+                /* Fica mais difícil a
+                   cada nível: regenera
+                   os obstáculos */
+
+                gerarObstaculos();
+
+
+                if (
+                    s.some(
+                        p =>
+                            isObstacle(p)
+                    )
+                ) {
+
+                    end();
+
+                    return;
+
+                }
+
+            }
+
+        }
+
+
         if (
 
             now -
             lastMove >=
             1000 /
-            D[diff][0]
+            velocidadeAtual()
 
         ) {
 
@@ -1520,6 +2326,61 @@ function loop(now) {
    COMEÇAR
 ========================================================= */
 
+/* =========================================================
+   NAVEGAÇÃO ENTRE TELAS
+========================================================= */
+
+const TELAS = [
+    'home',
+    'ranking',
+    'game',
+    'menuTema',
+    'menuModo',
+    'menuDiff',
+    'menuSkins'
+];
+
+
+function showScreen(id) {
+
+    TELAS.forEach(
+        s => {
+
+            $(s)
+                .classList
+                .add('hide');
+
+        }
+    );
+
+
+    $(id)
+        .classList
+        .remove('hide');
+
+}
+
+
+function atualizarStatusJogador() {
+
+    if ($('homeCoins')) {
+
+        $('homeCoins').textContent =
+            coins;
+
+    }
+
+
+    if ($('homeLevel')) {
+
+        $('homeLevel').textContent =
+            playerLevel();
+
+    }
+
+}
+
+
 function begin() {
 
     name =
@@ -1551,19 +2412,7 @@ function begin() {
     paused = false;
 
 
-    $('home')
-        .classList
-        .add('hide');
-
-
-    $('ranking')
-        .classList
-        .add('hide');
-
-
-    $('game')
-        .classList
-        .remove('hide');
+    showScreen('game');
 
 
     resize();
@@ -1657,6 +2506,23 @@ function end() {
 
 
     /* =====================================================
+       MOEDAS E XP
+    ===================================================== */
+
+    coins +=
+        coinsThisRun;
+
+    totalXP +=
+        score;
+
+    localStorage.snakeCoins =
+        coins;
+
+    localStorage.snakeXP =
+        totalXP;
+
+
+    /* =====================================================
        RANKING GLOBAL SUPABASE
     ===================================================== */
 
@@ -1672,7 +2538,8 @@ function end() {
             alert(
                 `Fim de jogo!\n\n` +
                 `${name}: ${score} pontos\n` +
-                `Tempo: ${Math.floor(gameTime)}s`
+                `Tempo: ${Math.floor(gameTime)}s\n` +
+                `Moedas ganhas: ${coinsThisRun} 🪙`
             );
 
 
@@ -1701,19 +2568,10 @@ function home() {
         .add('hide');
 
 
-    $('game')
-        .classList
-        .add('hide');
+    showScreen('home');
 
 
-    $('ranking')
-        .classList
-        .add('hide');
-
-
-    $('home')
-        .classList
-        .remove('hide');
+    atualizarStatusJogador();
 
 }
 
@@ -1724,19 +2582,7 @@ function home() {
 
 async function showRank() {
 
-    $('home')
-        .classList
-        .add('hide');
-
-
-    $('game')
-        .classList
-        .add('hide');
-
-
-    $('ranking')
-        .classList
-        .remove('hide');
+    showScreen('ranking');
 
 
     $('scores').innerHTML = `
@@ -1957,6 +2803,17 @@ $('tomenu').onclick =
     home;
 
 
+document
+    .querySelectorAll('.voltarMenu')
+    .forEach(
+        btn => {
+
+            btn.onclick = home;
+
+        }
+    );
+
+
 /* =========================================================
    NOME
 ========================================================= */
@@ -1971,61 +2828,368 @@ $('name').oninput =
 
 
 /* =========================================================
-   TEMA
+   MENU: TEMA
 ========================================================= */
 
-$('theme').onclick = () => {
+function renderTemas() {
 
-    const a =
+    const lista =
         Object.keys(T);
 
 
-    theme =
-        a[
-            (
-                a.indexOf(theme) +
-                1
-            ) %
-            a.length
-        ];
+    $('listaTemas').innerHTML =
+
+        lista
+            .map(
+                t => {
+
+                    const ativo =
+                        (t === theme)
+                            ? 'ativo'
+                            : '';
+
+                    return `
+                        <button
+                            class="opcaoLista ${ativo}"
+                            data-tema="${t}"
+                        >
+                            ${t}
+                        </button>
+                    `;
+
+                }
+            )
+            .join('');
 
 
-    localStorage.snakeTheme =
-        theme;
+    $('listaTemas')
+        .querySelectorAll('[data-tema]')
+        .forEach(
+            btn => {
+
+                btn.onclick = () => {
+
+                    theme =
+                        btn.dataset.tema;
+
+                    localStorage.snakeTheme =
+                        theme;
+
+                    apply();
+
+                    home();
+
+                };
+
+            }
+        );
+
+}
 
 
-    apply();
+$('openTema').onclick = () => {
 
-    draw();
+    renderTemas();
+
+    showScreen('menuTema');
 
 };
 
 
 /* =========================================================
-   DIFICULDADE
+   MENU: DIFICULDADE
 ========================================================= */
 
-$('diff').onclick = () => {
+function renderDificuldades() {
 
-    const a =
+    const lista =
         Object.keys(D);
 
 
-    diff =
-        a[
-            (
-                a.indexOf(diff) +
-                1
-            ) %
-            a.length
-        ];
+    $('listaDificuldades').innerHTML =
+
+        lista
+            .map(
+                d => {
+
+                    const ativo =
+                        (d === diff)
+                            ? 'ativo'
+                            : '';
+
+                    return `
+                        <button
+                            class="opcaoLista ${ativo}"
+                            data-diff="${d}"
+                        >
+                            ${d}
+                        </button>
+                    `;
+
+                }
+            )
+            .join('');
 
 
-    localStorage.snakeDiff =
-        diff;
+    $('listaDificuldades')
+        .querySelectorAll('[data-diff]')
+        .forEach(
+            btn => {
+
+                btn.onclick = () => {
+
+                    diff =
+                        btn.dataset.diff;
+
+                    localStorage.snakeDiff =
+                        diff;
+
+                    apply();
+
+                    home();
+
+                };
+
+            }
+        );
+
+}
 
 
-    apply();
+$('openDiff').onclick = () => {
+
+    renderDificuldades();
+
+    showScreen('menuDiff');
+
+};
+
+
+/* =========================================================
+   MENU: MODO DE MAPA
+========================================================= */
+
+function renderModos() {
+
+    $('listaModos').innerHTML =
+
+        MAPMODES
+            .map(
+                m => {
+
+                    const ativo =
+                        (m === mapMode)
+                            ? 'ativo'
+                            : '';
+
+                    return `
+                        <button
+                            class="opcaoLista ${ativo}"
+                            data-modo="${m}"
+                        >
+                            ${MAPMODE_LABEL[m]}
+                        </button>
+                    `;
+
+                }
+            )
+            .join('');
+
+
+    $('listaModos')
+        .querySelectorAll('[data-modo]')
+        .forEach(
+            btn => {
+
+                btn.onclick = () => {
+
+                    mapMode =
+                        btn.dataset.modo;
+
+                    localStorage.snakeMapMode =
+                        mapMode;
+
+                    apply();
+
+                    home();
+
+                };
+
+            }
+        );
+
+}
+
+
+$('openModo').onclick = () => {
+
+    renderModos();
+
+    showScreen('menuModo');
+
+};
+
+
+/* =========================================================
+   MENU: SKINS (com moedas e nível)
+========================================================= */
+
+function renderSkins() {
+
+    $('skinsCoins').textContent =
+        coins;
+
+    $('skinsLevel').textContent =
+        playerLevel();
+
+
+    $('listaSkins').innerHTML =
+
+        SKINS
+            .map(
+                nomeSkin => {
+
+                    const info =
+                        SKIN_INFO[nomeSkin];
+
+                    const desbloqueada =
+                        skinDesbloqueada(nomeSkin);
+
+                    const ativa =
+                        (nomeSkin === skin);
+
+
+                    let acaoHtml;
+
+
+                    if (ativa) {
+
+                        acaoHtml =
+                            `<span class="tagSelecionada">SELECIONADA</span>`;
+
+                    } else if (desbloqueada) {
+
+                        acaoHtml =
+                            `<button class="botaoSelecionar" data-selecionar="${nomeSkin}">Selecionar</button>`;
+
+                    } else {
+
+                        const podeComprar =
+                            coins >= info.custo;
+
+                        acaoHtml = `
+                            <span class="infoBloqueio">Nível ${info.nivel} ou</span>
+                            <button
+                                class="botaoComprar"
+                                data-comprar="${nomeSkin}"
+                                ${podeComprar ? '' : 'disabled'}
+                            >
+                                🪙 ${info.custo}
+                            </button>
+                        `;
+
+                    }
+
+
+                    return `
+                        <div class="linhaSkin ${ativa ? 'ativa' : ''}">
+                            <div class="previaSkin previa-${nomeSkin}"></div>
+                            <div class="infoSkin">
+                                <b>${info.nome}</b>
+                            </div>
+                            <div class="acaoSkin">
+                                ${acaoHtml}
+                            </div>
+                        </div>
+                    `;
+
+                }
+            )
+            .join('');
+
+
+    $('listaSkins')
+        .querySelectorAll('[data-selecionar]')
+        .forEach(
+            btn => {
+
+                btn.onclick = () => {
+
+                    skin =
+                        btn.dataset.selecionar;
+
+                    localStorage.snakeSkin =
+                        skin;
+
+                    apply();
+
+                    renderSkins();
+
+                };
+
+            }
+        );
+
+
+    $('listaSkins')
+        .querySelectorAll('[data-comprar]')
+        .forEach(
+            btn => {
+
+                btn.onclick = () => {
+
+                    const nomeSkin =
+                        btn.dataset.comprar;
+
+                    const info =
+                        SKIN_INFO[nomeSkin];
+
+
+                    if (coins < info.custo) {
+
+                        return;
+
+                    }
+
+
+                    coins -=
+                        info.custo;
+
+                    ownedSkins.add(
+                        nomeSkin
+                    );
+
+                    localStorage.snakeCoins =
+                        coins;
+
+                    localStorage.snakeOwnedSkins =
+                        JSON.stringify(
+                            [...ownedSkins]
+                        );
+
+                    skin =
+                        nomeSkin;
+
+                    localStorage.snakeSkin =
+                        skin;
+
+                    apply();
+
+                    renderSkins();
+
+                };
+
+            }
+        );
+
+}
+
+
+$('openSkins').onclick = () => {
+
+    renderSkins();
+
+    showScreen('menuSkins');
 
 };
 
@@ -2039,3 +3203,5 @@ resize();
 reset();
 
 draw();
+
+atualizarStatusJogador();
