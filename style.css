@@ -218,6 +218,28 @@ header button {
 .previa-Fogo {
     background: linear-gradient(135deg, #ff3c00, #ff9600, #ffdc3c);
 }
+.previa-Camuflada {
+    background:
+        repeating-conic-gradient(
+            #3a4d2b 0% 25%,
+            #5a6b3a 0% 50%
+        );
+    background-size: 10px 10px;
+}
+.previa-Dourada {
+    background: linear-gradient(135deg, #7a5a10, #ffd75a, #7a5a10);
+}
+.previa-Toxica {
+    background: #4ea60f;
+    box-shadow: 0 0 12px 3px #7cff2b;
+}
+.previa-Estelar {
+    background:
+        radial-gradient(circle at 30% 30%, #fff 0 2px, transparent 3px),
+        radial-gradient(circle at 70% 60%, #fff 0 2px, transparent 3px),
+        radial-gradient(circle at 50% 80%, #fff 0 2px, transparent 3px),
+        #140a2e;
+}
 #ranking {
     text-align: center;
 }
@@ -270,6 +292,33 @@ canvas {
     padding: 5px 8px;
     border-radius: 12px;
     font-size: 11px;
+}
+#toastEvento {
+    position: absolute;
+    left: 50%;
+    top: 16px;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, .7);
+    border: 2px solid var(--border);
+    padding: 8px 16px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 700;
+    white-space: nowrap;
+    z-index: 5;
+}
+.seletorModo {
+    display: block;
+    width: min(370px, 90vw);
+    margin: 0 auto 18px;
+    min-height: 46px;
+    padding: 8px 12px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    background: rgba(0, 0, 0, .35);
+    color: var(--text);
+    font: inherit;
+    font-weight: 700;
 }
 #pause2 {
     height: 52px;
