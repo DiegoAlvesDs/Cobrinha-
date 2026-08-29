@@ -309,7 +309,7 @@ const SKINS =
    CONFIGURAÇÕES DO MAPA
 ========================================================= */
 
-const MAPA_INICIAL = 80;
+const MAPA_INICIAL = 100;
 
 const MAPA_MINIMO = 20;
 
