@@ -9,7 +9,7 @@ const SUPABASE_KEY =
     'sb_publishable_5kL_MJ5oYHzD0X5OCecCmQ_TZ5h-HiI';
 
 
-async function salvarRanking(nome, pontuacao) {
+async function salvarRanking(nome, pontuacao, tempo, modo) {
 
     try {
 
@@ -33,6 +33,8 @@ async function salvarRanking(nome, pontuacao) {
                         JSON.stringify({
                             nome: nome,
                             pontuacao: pontuacao,
+                            tempo: tempo,
+                            modo: modo,
                             dificuldade: diff
                         })
                 }
@@ -63,13 +65,13 @@ async function salvarRanking(nome, pontuacao) {
 }
 
 
-async function carregarRanking() {
+async function carregarRanking(modo) {
 
     try {
 
         const resposta =
             await fetch(
-                `${SUPABASE_URL}/rest/v1/ranking?select=nome,pontuacao,dificuldade,criado_em&order=pontuacao.desc,criado_em.asc&limit=20`,
+                `${SUPABASE_URL}/rest/v1/ranking_melhores?select=nome,pontuacao,tempo,dificuldade,modo,criado_em&modo=eq.${encodeURIComponent(modo)}&order=pontuacao.desc,criado_em.asc&limit=50`,
                 {
                     method: 'GET',
 
@@ -173,6 +175,34 @@ const T = {
         [15, 50, 20],
         [25, 75, 30],
         [130, 190, 135]
+    ],
+
+    Deserto: [
+        [35, 25, 10],
+        [90, 70, 30],
+        [130, 100, 45],
+        [235, 205, 145]
+    ],
+
+    Cyberpunk: [
+        [10, 5, 20],
+        [40, 10, 60],
+        [70, 15, 100],
+        [255, 60, 220]
+    ],
+
+    Outono: [
+        [25, 12, 5],
+        [80, 40, 15],
+        [120, 60, 20],
+        [235, 155, 65]
+    ],
+
+    Monocromo: [
+        [10, 10, 10],
+        [40, 40, 40],
+        [70, 70, 70],
+        [225, 225, 225]
     ]
 
 };
@@ -215,16 +245,59 @@ const C = [
 const MAPMODES = [
     'Classico',
     'SemParede',
+    'Infinito',
+    'Velocidade',
+    'Tempo',
     'Obstaculos',
-    'Labirinto'
+    'Caos',
+    'Espelho'
 ];
 
 const MAPMODE_LABEL = {
     Classico: 'Clássico',
     SemParede: 'Sem Parede',
+    Infinito: 'Infinito',
+    Velocidade: 'Velocidade',
+    Tempo: 'Tempo',
     Obstaculos: 'Obstáculos',
-    Labirinto: 'Labirinto'
+    Caos: 'Caos',
+    Espelho: 'Espelho'
 };
+
+
+/* =========================================================
+   LIMITE DE TEMPO (modo TEMPO)
+========================================================= */
+
+const LIMITE_TEMPO_MODO = 60;
+
+
+/* =========================================================
+   MODOS QUE ENCOLHEM O MAPA COM O TEMPO
+========================================================= */
+
+function modoEncolheMapa() {
+
+    return (
+
+        mapMode === 'Classico' ||
+        mapMode === 'SemParede' ||
+        mapMode === 'Obstaculos'
+
+    );
+
+}
+
+
+/* =========================================================
+   QUANTIDADE DE MAÇÃS NO MAPA
+========================================================= */
+
+function quantidadeMacas() {
+
+    return (mapMode === 'Classico') ? 4 : 2;
+
+}
 
 
 /* =========================================================
@@ -247,56 +320,80 @@ const SKIN_INFO = {
 
     Retro: {
         nome: 'Retrô',
-        custo: 20,
-        nivel: 2
+        custo: 40,
+        nivel: 4
     },
 
     Gradiente: {
         nome: 'Gradiente',
-        custo: 30,
-        nivel: 2
-    },
-
-    Gelo: {
-        nome: 'Gelo',
-        custo: 45,
-        nivel: 3
-    },
-
-    Neon: {
-        nome: 'Neon',
-        custo: 50,
-        nivel: 3
-    },
-
-    Espinhada: {
-        nome: 'Espinhada',
         custo: 60,
         nivel: 4
     },
 
+    Gelo: {
+        nome: 'Gelo',
+        custo: 90,
+        nivel: 6
+    },
+
+    Neon: {
+        nome: 'Neon',
+        custo: 100,
+        nivel: 6
+    },
+
+    Espinhada: {
+        nome: 'Espinhada',
+        custo: 120,
+        nivel: 8
+    },
+
+    Camuflada: {
+        nome: 'Camuflada',
+        custo: 140,
+        nivel: 8
+    },
+
     Fantasma: {
         nome: 'Fantasma',
-        custo: 75,
-        nivel: 5
+        custo: 150,
+        nivel: 10
     },
 
     ArcoIris: {
         nome: 'Arco-íris',
-        custo: 90,
-        nivel: 5
+        custo: 180,
+        nivel: 10
+    },
+
+    Dourada: {
+        nome: 'Dourada',
+        custo: 200,
+        nivel: 11
     },
 
     Metalica: {
         nome: 'Metálica',
-        custo: 110,
-        nivel: 6
+        custo: 220,
+        nivel: 12
+    },
+
+    Toxica: {
+        nome: 'Tóxica',
+        custo: 240,
+        nivel: 13
     },
 
     Fogo: {
         nome: 'Fogo',
-        custo: 130,
-        nivel: 7
+        custo: 260,
+        nivel: 14
+    },
+
+    Estelar: {
+        nome: 'Estelar',
+        custo: 300,
+        nivel: 15
     }
 
 };
@@ -309,7 +406,7 @@ const SKINS =
    CONFIGURAÇÕES DO MAPA
 ========================================================= */
 
-const MAPA_INICIAL = 100;
+const MAPA_INICIAL = 60;
 
 const MAPA_MINIMO = 20;
 
@@ -399,7 +496,7 @@ function skinDesbloqueada(nomeSkin) {
 
 
 /* =========================================================
-   OBSTÁCULOS / LABIRINTO
+   OBSTÁCULOS
 ========================================================= */
 
 let obstacles = new Set();
@@ -422,7 +519,7 @@ let dir = 'RIGHT';
 
 let next = 'RIGHT';
 
-let food = null;
+let foods = [];
 
 let rgb = null;
 
@@ -458,7 +555,27 @@ let lastMove = 0;
    RGB
 ========================================================= */
 
-let nextRgbScore = 10;
+let nextRgbScore = 20;
+
+
+/* =========================================================
+   MODO VELOCIDADE (bônus por maçã comida)
+========================================================= */
+
+let velocidadeExtraApple = 0;
+
+
+/* =========================================================
+   MODO CAOS (eventos aleatórios)
+========================================================= */
+
+let proximoEventoCaos = 0;
+
+let efeitoTemporario = null;
+
+let mensagemEvento = '';
+
+let mensagemEventoAte = 0;
 
 
 /* =========================================================
@@ -705,6 +822,90 @@ function desenharSegmento(px, py, cell, i, tamanho) {
 
         ctx.fillRect(px + m, py + m, tam, tam);
 
+    } else if (skin === 'Camuflada') {
+
+        const tonsCamuflagem = [
+            '#3a4d2b', '#5a6b3a', '#2e3b22', '#6f7a4a'
+        ];
+
+        ctx.fillStyle =
+            tonsCamuflagem[
+                (i * 7 + Math.floor(px + py)) % tonsCamuflagem.length
+            ];
+
+        ctx.fillRect(px + m, py + m, tam, tam);
+
+    } else if (skin === 'Dourada') {
+
+        const brilho =
+            Math.sin(Date.now() / 200 + i * 0.6) * 0.5 + 0.5;
+
+        const grad =
+            ctx.createLinearGradient(px, py, px + cell, py + cell);
+
+        grad.addColorStop(0, '#7a5a10');
+        grad.addColorStop(0.5, `rgba(255, 215, 90, ${0.6 + brilho * 0.4})`);
+        grad.addColorStop(1, '#7a5a10');
+
+        ctx.fillStyle = grad;
+        ctx.fillRect(px + m, py + m, tam, tam);
+
+        ctx.strokeStyle = '#fff2b0';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px + m, py + m, tam, tam);
+
+    } else if (skin === 'Toxica') {
+
+        const pulso =
+            Math.sin(Date.now() / 150 + i * 0.8) * 0.5 + 0.5;
+
+        ctx.shadowBlur = cell * (0.3 + pulso * 0.4);
+        ctx.shadowColor = '#7cff2b';
+        ctx.fillStyle = '#4ea60f';
+
+        ctx.fillRect(px + m, py + m, tam, tam);
+
+        ctx.fillStyle =
+            `rgba(180, 255, 60, ${0.3 + pulso * 0.4})`;
+
+        ctx.fillRect(
+            px + cell * 0.3,
+            py + cell * 0.3,
+            cell * 0.25,
+            cell * 0.25
+        );
+
+    } else if (skin === 'Estelar') {
+
+        ctx.fillStyle = '#140a2e';
+        ctx.fillRect(px + m, py + m, tam, tam);
+
+        const semente =
+            (i * 9301 + 49297) % 233280;
+
+        const numEstrelas = 3;
+
+
+        for (let e = 0; e < numEstrelas; e++) {
+
+            const s1 =
+                (semente * (e + 1) * 9301) % 233280;
+
+            const s2 =
+                (semente * (e + 3) * 49297) % 233280;
+
+            const ex =
+                px + m + (s1 / 233280) * tam;
+
+            const ey =
+                py + m + (s2 / 233280) * tam;
+
+            ctx.fillStyle = '#ffffff';
+
+            ctx.fillRect(ex, ey, Math.max(1, cell * 0.08), Math.max(1, cell * 0.08));
+
+        }
+
     } else {
 
         /* Sólida (padrão) */
@@ -896,6 +1097,33 @@ function rnd() {
    OCUPADO
 ========================================================= */
 
+/* =========================================================
+   FORMATAR TEMPO (M:SS)
+========================================================= */
+
+function formatarTempo(segundos) {
+
+    const s =
+        Math.max(
+            0,
+            Math.floor(segundos || 0)
+        );
+
+    const m =
+        Math.floor(s / 60);
+
+    const r =
+        s % 60;
+
+    return (
+        m +
+        ':' +
+        String(r).padStart(2, '0')
+    );
+
+}
+
+
 function obsKey(x, y) {
 
     return x + ',' + y;
@@ -922,7 +1150,20 @@ function occupied(p) {
                 q.y === p.y
         ) ||
 
-        isObstacle(p)
+        isObstacle(p) ||
+
+        foods.some(
+            f =>
+                f.x === p.x &&
+                f.y === p.y
+        ) ||
+
+        (
+            rgbOn &&
+            rgb &&
+            rgb.x === p.x &&
+            rgb.y === p.y
+        )
 
     );
 
@@ -930,220 +1171,91 @@ function occupied(p) {
 
 
 /* =========================================================
-   GERAR OBSTÁCULOS / LABIRINTO
+   MODO OBSTÁCULOS
+
+   Os obstáculos são gerados uma única vez no
+   início da partida, em posições que não
+   colidem com a cobra. Ao encolher o mapa,
+   só removemos os que ficaram fora e
+   completamos a quantidade alvo em lugares
+   seguros — nunca regeneramos tudo do zero,
+   pra um obstáculo nunca aparecer em cima
+   da cobra.
 ========================================================= */
 
-function gerarObstaculos() {
+function ajustarObstaculos() {
 
-    obstacles =
-        new Set();
+    obstacles.forEach(
+        chave => {
 
+            const partes =
+                chave.split(',');
 
-    if (
-        mapMode === 'Obstaculos'
-    ) {
+            const ox =
+                Number(partes[0]);
 
-        const centro =
-            Math.floor(mapSize / 2);
-
-        const qtd =
-            Math.floor(mapSize * mapSize * 0.03) +
-            Math.floor(level * 1.5);
-
-        let tentativas = 0;
-
-
-        while (
-
-            obstacles.size < qtd &&
-            tentativas < qtd * 40
-
-        ) {
-
-            tentativas++;
-
-
-            const p =
-                rnd();
+            const oy =
+                Number(partes[1]);
 
 
             if (
-
-                Math.abs(p.x - centro) < 4 &&
-                Math.abs(p.y - centro) < 4
-
+                ox >= mapSize ||
+                oy >= mapSize
             ) {
 
-                continue;
+                obstacles.delete(chave);
 
             }
 
-
-            obstacles.add(
-                obsKey(p.x, p.y)
-            );
-
         }
-
-    } else if (
-        mapMode === 'Labirinto'
-    ) {
-
-        gerarLabirinto();
-
-    }
-
-}
-
-
-function gerarLabirinto() {
-
-    const margem = 2;
-
-
-    function dividir(x0, y0, x1, y1) {
-
-        const largura =
-            x1 - x0;
-
-        const altura =
-            y1 - y0;
-
-
-        if (
-            largura < 6 ||
-            altura < 6
-        ) {
-
-            return;
-
-        }
-
-
-        const horizontal =
-            largura < altura;
-
-
-        if (horizontal) {
-
-            const wy =
-                y0 + 2 +
-                Math.floor(
-                    Math.random() *
-                    (altura - 4)
-                );
-
-            const gap =
-                x0 +
-                Math.floor(
-                    Math.random() *
-                    largura
-                );
-
-
-            for (
-                let x = x0;
-                x <= x1;
-                x++
-            ) {
-
-                if (
-                    x !== gap &&
-                    x !== gap + 1
-                ) {
-
-                    obstacles.add(
-                        obsKey(x, wy)
-                    );
-
-                }
-
-            }
-
-
-            dividir(x0, y0, x1, wy - 1);
-
-            dividir(x0, wy + 1, x1, y1);
-
-        } else {
-
-            const wx =
-                x0 + 2 +
-                Math.floor(
-                    Math.random() *
-                    (largura - 4)
-                );
-
-            const gap =
-                y0 +
-                Math.floor(
-                    Math.random() *
-                    altura
-                );
-
-
-            for (
-                let y = y0;
-                y <= y1;
-                y++
-            ) {
-
-                if (
-                    y !== gap &&
-                    y !== gap + 1
-                ) {
-
-                    obstacles.add(
-                        obsKey(wx, y)
-                    );
-
-                }
-
-            }
-
-
-            dividir(x0, y0, wx - 1, y1);
-
-            dividir(wx + 1, y0, x1, y1);
-
-        }
-
-    }
-
-
-    dividir(
-        margem,
-        margem,
-        mapSize - 1 - margem,
-        mapSize - 1 - margem
     );
 
-
-    /* Limpa a área central para a
-       cobra não nascer dentro de
-       uma parede */
 
     const centro =
         Math.floor(mapSize / 2);
 
+    const qtdAlvo =
+        Math.floor(mapSize * mapSize * 0.025);
 
-    for (
-        let dx = -3;
-        dx <= 3;
-        dx++
+    let tentativas = 0;
+
+
+    while (
+
+        obstacles.size < qtdAlvo &&
+        tentativas < 500
+
     ) {
 
-        for (
-            let dy = -2;
-            dy <= 2;
-            dy++
+        tentativas++;
+
+
+        const p =
+            rnd();
+
+
+        if (
+
+            Math.abs(p.x - centro) < 4 &&
+            Math.abs(p.y - centro) < 4
+
         ) {
 
-            obstacles.delete(
-                obsKey(centro + dx, centro + dy)
-            );
+            continue;
 
         }
+
+
+        if (occupied(p)) {
+
+            continue;
+
+        }
+
+
+        obstacles.add(
+            obsKey(p.x, p.y)
+        );
 
     }
 
@@ -1151,7 +1263,27 @@ function gerarLabirinto() {
 
 
 /* =========================================================
-   VELOCIDADE (aumenta com o nível)
+   PREPARAR MODO DE MAPA
+========================================================= */
+
+function prepararModoMapa() {
+
+    if (mapMode === 'Obstaculos') {
+
+        ajustarObstaculos();
+
+    }
+
+}
+
+
+/* =========================================================
+   VELOCIDADE
+
+   Sobe com o nível (tempo de partida), com
+   um empurrão extra no modo Velocidade a
+   cada maçã comida, e uma rajada temporária
+   quando o Caos dispara o evento.
 ========================================================= */
 
 function velocidadeAtual() {
@@ -1159,14 +1291,165 @@ function velocidadeAtual() {
     const base =
         D[diff][0];
 
-    const bonus =
-        (level - 1) * 0.8;
+    const fatorNivel =
+        (mapMode === 'Velocidade')
+            ? 1.4
+            : 0.8;
+
+    let bonus =
+        (level - 1) * fatorNivel;
+
+
+    bonus +=
+        velocidadeExtraApple;
+
+
+    if (
+
+        efeitoTemporario &&
+        efeitoTemporario.tipo === 'velocidade' &&
+        gameTime < efeitoTemporario.ate
+
+    ) {
+
+        bonus += 6;
+
+    }
 
 
     return Math.min(
         base + bonus,
-        base + 12
+        base + 18
     );
+
+}
+
+
+/* =========================================================
+   MODO CAOS
+
+   A cada 15-25s de partida, dispara um
+   evento aleatório: rajada de velocidade,
+   maçã fugitiva (reposiciona) ou controles
+   invertidos por alguns segundos.
+========================================================= */
+
+function agendarProximoEventoCaos() {
+
+    proximoEventoCaos =
+        gameTime +
+        15 +
+        Math.random() * 10;
+
+}
+
+
+function dispararEventoCaos() {
+
+    const eventos =
+        ['velocidade', 'macaFugitiva', 'espelho'];
+
+    const tipo =
+        eventos[
+            Math.floor(
+                Math.random() * eventos.length
+            )
+        ];
+
+
+    if (tipo === 'velocidade') {
+
+        efeitoTemporario = {
+            tipo: 'velocidade',
+            ate: gameTime + 4
+        };
+
+        mensagemEvento =
+            '⚡ Rajada de velocidade!';
+
+    } else if (tipo === 'macaFugitiva') {
+
+        if (foods.length) {
+
+            const idx =
+                Math.floor(
+                    Math.random() * foods.length
+                );
+
+            const nova =
+                spawnUmaMaca();
+
+
+            if (nova) {
+
+                foods[idx] =
+                    nova;
+
+            }
+
+        }
+
+
+        mensagemEvento =
+            '🍎 Maçã fugitiva!';
+
+    } else if (tipo === 'espelho') {
+
+        efeitoTemporario = {
+            tipo: 'espelho',
+            ate: gameTime + 4
+        };
+
+        mensagemEvento =
+            '🔀 Controles invertidos!';
+
+    }
+
+
+    mensagemEventoAte =
+        gameTime + 2.5;
+
+
+    agendarProximoEventoCaos();
+
+}
+
+
+/* =========================================================
+   MODO ESPELHO (permanente ou temporário via Caos)
+========================================================= */
+
+function direcaoAtiva(d) {
+
+    const espelhoAtivo =
+
+        mapMode === 'Espelho' ||
+
+        (
+
+            efeitoTemporario &&
+            efeitoTemporario.tipo === 'espelho' &&
+            gameTime < efeitoTemporario.ate
+
+        );
+
+
+    if (!espelhoAtivo) {
+
+        return d;
+
+    }
+
+
+    const inverso = {
+        UP: 'DOWN',
+        DOWN: 'UP',
+        LEFT: 'RIGHT',
+        RIGHT: 'LEFT'
+    };
+
+
+    return inverso[d];
 
 }
 
@@ -1175,14 +1458,16 @@ function velocidadeAtual() {
    SPAWN MAÇÃ
 ========================================================= */
 
-function spawn() {
+function spawnUmaMaca() {
 
     let tentativas = 0;
+
+    let p;
 
 
     do {
 
-        food =
+        p =
             rnd();
 
         tentativas++;
@@ -1192,13 +1477,40 @@ function spawn() {
             tentativas > 1000
         ) {
 
-            /* Mapa lotado: não há mais
-               espaço livre para a maçã.
-               Em vez de deixar a maçã
-               travada numa posição antiga,
-               encerramos a partida. */
+            return null;
 
-            food = null;
+        }
+
+    } while (
+        occupied(p)
+    );
+
+
+    return p;
+
+}
+
+
+function preencherMacas() {
+
+    const alvo =
+        quantidadeMacas();
+
+
+    while (
+        foods.length < alvo
+    ) {
+
+        const p =
+            spawnUmaMaca();
+
+
+        if (!p) {
+
+            /* Mapa lotado: não há mais
+               espaço livre para maçãs.
+               Em vez de travar, encerramos
+               a partida. */
 
             if (run) {
 
@@ -1210,9 +1522,19 @@ function spawn() {
 
         }
 
-    } while (
-        occupied(food)
-    );
+
+        foods.push(p);
+
+    }
+
+
+    if (
+        foods.length > alvo
+    ) {
+
+        foods.length = alvo;
+
+    }
 
 }
 
@@ -1223,44 +1545,27 @@ function spawn() {
 
 function spawnRgb() {
 
-    let tentativas = 0;
+    const p =
+        spawnUmaMaca();
 
 
-    do {
+    if (!p) {
 
-        rgb =
-            rnd();
+        /* Mapa lotado: cancela a
+           maçã bônus em vez de
+           deixá-la travada numa
+           posição antiga. */
 
-        tentativas++;
+        rgbOn = false;
+
+        rgb = null;
+
+        return;
+
+    }
 
 
-        if (
-            tentativas > 1000
-        ) {
-
-            /* Mapa lotado: cancela a
-               maçã bônus em vez de
-               deixá-la travada numa
-               posição antiga. */
-
-            rgbOn = false;
-
-            rgb = null;
-
-            return;
-
-        }
-
-    } while (
-
-        occupied(rgb) ||
-
-        (
-            rgb.x === food.x &&
-            rgb.y === food.y
-        )
-
-    );
+    rgb = p;
 
 }
 
@@ -1335,7 +1640,7 @@ function reset() {
     rgb = null;
 
 
-    nextRgbScore = 10;
+    nextRgbScore = 20;
 
 
     gameTime = 0;
@@ -1348,6 +1653,18 @@ function reset() {
     level = 1;
 
 
+    velocidadeExtraApple = 0;
+
+    efeitoTemporario = null;
+
+    mensagemEvento = '';
+
+    mensagemEventoAte = 0;
+
+    proximoEventoCaos =
+        15 + Math.random() * 10;
+
+
     start =
         performance.now();
 
@@ -1356,9 +1673,14 @@ function reset() {
         start;
 
 
-    gerarObstaculos();
+    obstacles =
+        new Set();
 
-    spawn();
+    foods = [];
+
+    prepararModoMapa();
+
+    preencherMacas();
 
 }
 
@@ -1408,7 +1730,7 @@ window.onkeydown = e => {
         k === 'w'
     ) {
 
-        setDir('UP');
+        setDir(direcaoAtiva('UP'));
 
     }
 
@@ -1418,7 +1740,7 @@ window.onkeydown = e => {
         k === 's'
     ) {
 
-        setDir('DOWN');
+        setDir(direcaoAtiva('DOWN'));
 
     }
 
@@ -1428,7 +1750,7 @@ window.onkeydown = e => {
         k === 'a'
     ) {
 
-        setDir('LEFT');
+        setDir(direcaoAtiva('LEFT'));
 
     }
 
@@ -1438,7 +1760,7 @@ window.onkeydown = e => {
         k === 'd'
     ) {
 
-        setDir('RIGHT');
+        setDir(direcaoAtiva('RIGHT'));
 
     }
 
@@ -1511,17 +1833,21 @@ cv.ontouchend = e => {
     ) {
 
         setDir(
-            x > 0
-                ? 'RIGHT'
-                : 'LEFT'
+            direcaoAtiva(
+                x > 0
+                    ? 'RIGHT'
+                    : 'LEFT'
+            )
         );
 
     } else {
 
         setDir(
-            y > 0
-                ? 'DOWN'
-                : 'UP'
+            direcaoAtiva(
+                y > 0
+                    ? 'DOWN'
+                    : 'UP'
+            )
         );
 
     }
@@ -1548,24 +1874,18 @@ function shrinkMap() {
     mapSize -= 2;
 
 
-    gerarObstaculos();
+    prepararModoMapa();
 
 
-    if (
+    foods =
+        foods.filter(
+            f =>
+                f.x < mapSize &&
+                f.y < mapSize &&
+                !isObstacle(f)
+        );
 
-        !food ||
-
-        food.x >= mapSize ||
-
-        food.y >= mapSize ||
-
-        isObstacle(food)
-
-    ) {
-
-        spawn();
-
-    }
+    preencherMacas();
 
 
     if (
@@ -1586,18 +1906,15 @@ function shrinkMap() {
     }
 
 
-    if (
-        s.some(
-            p =>
-                p.x >= mapSize ||
-                p.y >= mapSize ||
-                isObstacle(p)
-        )
-    ) {
-
-        end();
-
-    }
+    /* Se só um pedaço do RABO ficou fora
+       da nova área, não é motivo pra matar
+       o jogador — esses segmentos vão
+       sumindo sozinhos conforme a cobra
+       anda (a cauda é removida a cada
+       passo). Só a CABEÇA fora dos limites
+       encerra o jogo, e isso já é tratado
+       normalmente dentro de move() no
+       próximo passo. */
 
 }
 
@@ -1731,12 +2048,15 @@ function move() {
        MAÇÃ NORMAL
     ===================================================== */
 
-    if (
+    const idxComida =
+        foods.findIndex(
+            f =>
+                f.x === h.x &&
+                f.y === h.y
+        );
 
-        h.x === food.x &&
-        h.y === food.y
 
-    ) {
+    if (idxComida !== -1) {
 
         score +=
             D[diff][1];
@@ -1758,7 +2078,22 @@ function move() {
             ];
 
 
-        spawn();
+        if (
+            mapMode === 'Velocidade'
+        ) {
+
+            velocidadeExtraApple =
+                Math.min(
+                    velocidadeExtraApple + 0.3,
+                    10
+                );
+
+        }
+
+
+        foods.splice(idxComida, 1);
+
+        preencherMacas();
 
 
         if (
@@ -1820,7 +2155,25 @@ function move() {
         rgb = null;
 
 
-        spawn();
+        if (foods.length) {
+
+            const idxRealoca =
+                Math.floor(
+                    Math.random() * foods.length
+                );
+
+            const novaPos =
+                spawnUmaMaca();
+
+
+            if (novaPos) {
+
+                foods[idxRealoca] =
+                    novaPos;
+
+            }
+
+        }
 
     }
 
@@ -1956,7 +2309,7 @@ function draw() {
 
 
     /* =====================================================
-       OBSTÁCULOS / LABIRINTO
+       PEDRAS
     ===================================================== */
 
     if (obstacles.size) {
@@ -1999,32 +2352,34 @@ function draw() {
 
 
     /* =====================================================
-       MAÇÃ
+       MAÇÃS
     ===================================================== */
 
-    if (food) {
+    foods.forEach(
+        f => {
 
-        ctx.fillStyle =
-            '#ff3c3c';
+            ctx.fillStyle =
+                '#ff3c3c';
 
 
-        ctx.fillRect(
+            ctx.fillRect(
 
-            area.x +
-            food.x * cell +
-            cell * 0.12,
+                area.x +
+                f.x * cell +
+                cell * 0.12,
 
-            area.y +
-            food.y * cell +
-            cell * 0.12,
+                area.y +
+                f.y * cell +
+                cell * 0.12,
 
-            cell * 0.76,
+                cell * 0.76,
 
-            cell * 0.76
+                cell * 0.76
 
-        );
+            );
 
-    }
+        }
+    );
 
 
     /* =====================================================
@@ -2158,15 +2513,52 @@ function hud() {
         score;
 
 
-    $('time')
-        .textContent =
-        Math.floor(
-            gameTime
-        ) + 's';
+    if (mapMode === 'Tempo') {
+
+        const restante =
+            Math.max(
+                0,
+                Math.ceil(
+                    LIMITE_TEMPO_MODO - gameTime
+                )
+            );
+
+        $('time').textContent =
+            restante + 's';
+
+    } else {
+
+        $('time').textContent =
+            Math.floor(
+                gameTime
+            ) + 's';
+
+    }
 
 
     $('lvl').textContent =
         'Nível ' + level;
+
+
+    if (
+        mapMode === 'Caos' &&
+        gameTime < mensagemEventoAte
+    ) {
+
+        $('toastEvento').textContent =
+            mensagemEvento;
+
+        $('toastEvento')
+            .classList
+            .remove('hide');
+
+    } else {
+
+        $('toastEvento')
+            .classList
+            .add('hide');
+
+    }
 
 
     const label =
@@ -2231,35 +2623,29 @@ function loop(now) {
             level =
                 novoNivel;
 
-
-            if (
-
-                mapMode === 'Obstaculos' ||
-                mapMode === 'Labirinto'
-
-            ) {
-
-                /* Fica mais difícil a
-                   cada nível: regenera
-                   os obstáculos */
-
-                gerarObstaculos();
+        }
 
 
-                if (
-                    s.some(
-                        p =>
-                            isObstacle(p)
-                    )
-                ) {
+        if (
 
-                    end();
+            mapMode === 'Tempo' &&
+            gameTime >= LIMITE_TEMPO_MODO
 
-                    return;
+        ) {
 
-                }
+            end();
 
-            }
+            return;
+
+        }
+
+
+        if (
+            mapMode === 'Caos' &&
+            gameTime >= proximoEventoCaos
+        ) {
+
+            dispararEventoCaos();
 
         }
 
@@ -2281,29 +2667,35 @@ function loop(now) {
         }
 
 
-        const reducoes =
-            Math.floor(
-                gameTime / 60
-            );
-
-
-        const tamanhoEsperado =
-            Math.max(
-
-                MAPA_MINIMO,
-
-                MAPA_INICIAL -
-                reducoes * 2
-
-            );
-
-
         if (
-            tamanhoEsperado <
-            mapSize
+            modoEncolheMapa()
         ) {
 
-            shrinkMap();
+            const reducoes =
+                Math.floor(
+                    gameTime / 60
+                );
+
+
+            const tamanhoEsperado =
+                Math.max(
+
+                    MAPA_MINIMO,
+
+                    MAPA_INICIAL -
+                    reducoes * 2
+
+                );
+
+
+            if (
+                tamanhoEsperado <
+                mapSize
+            ) {
+
+                shrinkMap();
+
+            }
 
         }
 
@@ -2495,7 +2887,7 @@ function end() {
     rank =
         rank.slice(
             0,
-            20
+            50
         );
 
 
@@ -2528,7 +2920,9 @@ function end() {
 
     salvarRanking(
         name,
-        score
+        score,
+        Math.floor(gameTime),
+        mapMode
     );
 
 
@@ -2580,10 +2974,51 @@ function home() {
    RANKING GLOBAL
 ========================================================= */
 
-async function showRank() {
+let rankModoSelecionado = null;
 
-    showScreen('ranking');
 
+function popularSeletorModoRanking() {
+
+    const select =
+        $('rankModoSelect');
+
+
+    if (select.options.length === 0) {
+
+        MAPMODES.forEach(
+            m => {
+
+                const opt =
+                    document.createElement('option');
+
+                opt.value = m;
+
+                opt.textContent =
+                    MAPMODE_LABEL[m];
+
+                select.appendChild(opt);
+
+            }
+        );
+
+    }
+
+
+    if (!rankModoSelecionado) {
+
+        rankModoSelecionado =
+            mapMode;
+
+    }
+
+
+    select.value =
+        rankModoSelecionado;
+
+}
+
+
+async function carregarEExibirRanking() {
 
     $('scores').innerHTML = `
 
@@ -2603,7 +3038,9 @@ async function showRank() {
 
 
     const rankingGlobal =
-        await carregarRanking();
+        await carregarRanking(
+            rankModoSelecionado
+        );
 
 
     if (!rankingGlobal.length) {
@@ -2656,6 +3093,10 @@ async function showRank() {
                         );
 
 
+                    const tempoFormatado =
+                        formatarTempo(r.tempo);
+
+
                     return `
 
                         <div class="row">
@@ -2669,6 +3110,8 @@ async function showRank() {
                                 ${r.pontuacao}
                                 pts
                                 ·
+                                ${tempoFormatado}
+                                ·
                                 ${dificuldade}
                             </b>
 
@@ -2681,6 +3124,27 @@ async function showRank() {
             .join('');
 
 }
+
+
+async function showRank() {
+
+    showScreen('ranking');
+
+    popularSeletorModoRanking();
+
+    await carregarEExibirRanking();
+
+}
+
+
+$('rankModoSelect').onchange = () => {
+
+    rankModoSelecionado =
+        $('rankModoSelect').value;
+
+    carregarEExibirRanking();
+
+};
 
 
 /* =========================================================
