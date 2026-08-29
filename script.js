@@ -1856,6 +1856,84 @@ cv.ontouchend = e => {
 
 
 /* =========================================================
+   CONTROLE POR SETAS NA TELA (D-PAD)
+========================================================= */
+
+function configurarDpad() {
+
+    const botoes = [
+
+        {
+            id: 'dpadUp',
+            direcao: 'UP'
+        },
+
+        {
+            id: 'dpadDown',
+            direcao: 'DOWN'
+        },
+
+        {
+            id: 'dpadLeft',
+            direcao: 'LEFT'
+        },
+
+        {
+            id: 'dpadRight',
+            direcao: 'RIGHT'
+        }
+
+    ];
+
+
+    botoes.forEach(
+        b => {
+
+            const btn =
+                $(b.id);
+
+
+            if (!btn) {
+
+                return;
+
+            }
+
+
+            const acionar =
+                e => {
+
+                    e.preventDefault();
+
+                    setDir(
+                        direcaoAtiva(b.direcao)
+                    );
+
+                };
+
+
+            btn.addEventListener(
+                'touchstart',
+                acionar,
+                { passive: false }
+            );
+
+
+            btn.addEventListener(
+                'click',
+                acionar
+            );
+
+        }
+    );
+
+}
+
+
+configurarDpad();
+
+
+/* =========================================================
    DIMINUIR MAPA
 ========================================================= */
 
@@ -3234,10 +3312,6 @@ $('menu').onclick = () => {
 
 
 $('pause').onclick =
-    togglePause;
-
-
-$('pause2').onclick =
     togglePause;
 
 
