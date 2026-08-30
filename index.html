@@ -50,7 +50,7 @@
         <!-- MENU: TEMA -->
         <section id="menuTema" class="screen hide">
             <h2>🎨 TEMA</h2>
-            <div id="listaTemas" class="listaOpcoes"></div>
+            <div id="listaTemas" class="listaSkinsContainer"></div>
             <button class="voltarMenu">← VOLTAR</button>
         </section>
 
@@ -115,13 +115,18 @@
                     MAPA 60×60
                 </label>
                 <div id="toastEvento" class="hide"></div>
+                <div id="contagem" class="hide"></div>
+            </div>
 
-                <!-- D-PAD DE SETAS -->
-                <div id="dpad">
-                    <button id="dpadUp" class="dpadBtn dpadUp" aria-label="Cima">▲</button>
-                    <button id="dpadLeft" class="dpadBtn dpadLeft" aria-label="Esquerda">◀</button>
-                    <button id="dpadRight" class="dpadBtn dpadRight" aria-label="Direita">▶</button>
-                    <button id="dpadDown" class="dpadBtn dpadDown" aria-label="Baixo">▼</button>
+            <!-- D-PAD DE SETAS -->
+            <div id="dpad">
+                <div class="dpadRow">
+                    <button id="dpadUp" class="dpadBtn" aria-label="Cima">▲</button>
+                </div>
+                <div class="dpadRow">
+                    <button id="dpadLeft" class="dpadBtn" aria-label="Esquerda">◀</button>
+                    <button id="dpadDown" class="dpadBtn" aria-label="Baixo">▼</button>
+                    <button id="dpadRight" class="dpadBtn" aria-label="Direita">▶</button>
                 </div>
             </div>
         </section>
