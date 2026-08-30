@@ -240,6 +240,47 @@ header button {
         radial-gradient(circle at 50% 80%, #fff 0 2px, transparent 3px),
         #140a2e;
 }
+.previa-Cristal {
+    background: rgba(179, 157, 255, .55);
+    border-color: #eae0ff;
+}
+.previa-Sombria {
+    background: linear-gradient(135deg, #1a1a22, #050508);
+    border-color: rgba(140, 120, 200, .5);
+}
+.previa-Aurora {
+    background: linear-gradient(90deg, #ff9fd6, #9fffde, #9fd6ff);
+}
+.previa-Vulcanica {
+    background: linear-gradient(135deg, #1a0a05, #ff5000);
+}
+.previa-Eletrica {
+    background: #1e6fbf;
+    box-shadow: 0 0 12px 3px #7ad0ff;
+}
+.previa-Prateada {
+    background: linear-gradient(135deg, #b8b8c0, #f4f4f8, #8c8c94);
+}
+.previa-Sanguinea {
+    background: #6a0010;
+    box-shadow: 0 0 12px 3px #a00010;
+}
+.previa-Realeza {
+    background: linear-gradient(135deg, #3a0a5c, #7a2fc0, #ffd75a);
+}
+.previa-Marinha {
+    background: linear-gradient(135deg, #00285a, #0082b4);
+}
+.previa-Celestial {
+    background:
+        radial-gradient(circle at 30% 30%, #fff 0 2px, transparent 3px),
+        radial-gradient(circle at 70% 60%, #fff 0 2px, transparent 3px),
+        #0a1030;
+}
+.previa-Colossal {
+    background: #00c060;
+    box-shadow: 0 0 0 5px rgba(255, 255, 255, .35);
+}
 #ranking {
     text-align: center;
 }
@@ -307,6 +348,19 @@ canvas {
     white-space: nowrap;
     z-index: 5;
 }
+#contagem {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(80px, 30vw, 160px);
+    font-weight: 900;
+    color: #fff;
+    background: rgba(0, 0, 0, .4);
+    text-shadow: 0 0 20px rgba(0, 0, 0, .6);
+    z-index: 8;
+}
 .seletorModo {
     display: block;
     width: min(370px, 90vw);
@@ -323,50 +377,41 @@ canvas {
 
 /* =========================================================
    D-PAD DE SETAS (controle na tela)
+
+   Fica em fluxo normal, como uma barra abaixo
+   do canvas — evita bugs de posicionamento
+   absoluto em telas/proporções diferentes.
 ========================================================= */
 #dpad {
-    position: absolute;
-    right: 14px;
-    bottom: 14px;
-    display: grid;
-    grid-template-columns: 52px 52px 52px;
-    grid-template-rows: 52px 52px 52px;
-    gap: 6px;
-    z-index: 6;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0 max(14px, env(safe-area-inset-bottom));
+    background: #0007;
+    border-top: 2px solid var(--border);
     user-select: none;
 }
+.dpadRow {
+    display: flex;
+    gap: 10px;
+}
 .dpadBtn {
-    width: 52px;
-    height: 52px;
+    width: 56px;
+    height: 56px;
     padding: 0;
     margin: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 20px;
+    font-size: 22px;
     line-height: 1;
-    background: rgba(0, 0, 0, .45);
     opacity: .9;
     touch-action: none;
 }
 .dpadBtn:active {
     background: rgba(255, 255, 255, .25);
-}
-.dpadUp {
-    grid-column: 2;
-    grid-row: 1;
-}
-.dpadLeft {
-    grid-column: 1;
-    grid-row: 2;
-}
-.dpadRight {
-    grid-column: 3;
-    grid-row: 2;
-}
-.dpadDown {
-    grid-column: 2;
-    grid-row: 3;
 }
 
 #overlay {
