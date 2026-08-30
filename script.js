@@ -203,6 +203,48 @@ const T = {
         [40, 40, 40],
         [70, 70, 70],
         [225, 225, 225]
+    ],
+
+    PorDoSol: [
+        [30, 10, 20],
+        [80, 20, 40],
+        [130, 40, 50],
+        [255, 150, 90]
+    ],
+
+    Menta: [
+        [5, 20, 15],
+        [10, 50, 35],
+        [15, 75, 55],
+        [140, 230, 190]
+    ],
+
+    Vinho: [
+        [20, 5, 10],
+        [60, 10, 25],
+        [90, 15, 40],
+        [230, 120, 150]
+    ],
+
+    Esmeralda: [
+        [3, 20, 12],
+        [8, 55, 30],
+        [12, 80, 45],
+        [110, 230, 150]
+    ],
+
+    Ametista: [
+        [15, 5, 25],
+        [45, 15, 70],
+        [70, 25, 105],
+        [190, 140, 230]
+    ],
+
+    Cobre: [
+        [20, 10, 5],
+        [70, 35, 15],
+        [110, 55, 25],
+        [230, 150, 90]
     ]
 
 };
@@ -394,6 +436,72 @@ const SKIN_INFO = {
         nome: 'Estelar',
         custo: 300,
         nivel: 15
+    },
+
+    Cristal: {
+        nome: 'Cristal',
+        custo: 320,
+        nivel: 16
+    },
+
+    Sombria: {
+        nome: 'Sombria',
+        custo: 350,
+        nivel: 17
+    },
+
+    Aurora: {
+        nome: 'Aurora',
+        custo: 380,
+        nivel: 18
+    },
+
+    Vulcanica: {
+        nome: 'Vulcânica',
+        custo: 420,
+        nivel: 19
+    },
+
+    Eletrica: {
+        nome: 'Elétrica',
+        custo: 460,
+        nivel: 20
+    },
+
+    Prateada: {
+        nome: 'Prateada',
+        custo: 500,
+        nivel: 21
+    },
+
+    Sanguinea: {
+        nome: 'Sanguínea',
+        custo: 550,
+        nivel: 22
+    },
+
+    Realeza: {
+        nome: 'Realeza',
+        custo: 600,
+        nivel: 23
+    },
+
+    Marinha: {
+        nome: 'Marinha',
+        custo: 650,
+        nivel: 24
+    },
+
+    Celestial: {
+        nome: 'Celestial',
+        custo: 700,
+        nivel: 25
+    },
+
+    Colossal: {
+        nome: 'Colossal (2x largura)',
+        custo: 1000,
+        nivel: 30
     }
 
 };
@@ -450,13 +558,13 @@ let coins =
     parseInt(
         localStorage.snakeCoins || '0',
         10
-    );
+    ) || 0;
 
 let totalXP =
     parseInt(
         localStorage.snakeXP || '0',
         10
-    );
+    ) || 0;
 
 let ownedSkins =
     new Set(
@@ -906,6 +1014,218 @@ function desenharSegmento(px, py, cell, i, tamanho) {
 
         }
 
+    } else if (skin === 'Cristal') {
+
+        ctx.globalAlpha = 0.55;
+        ctx.fillStyle = '#b39dff';
+        ctx.fillRect(px + m, py + m, tam, tam);
+
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = '#eae0ff';
+        ctx.lineWidth = Math.max(1, cell * 0.05);
+
+        ctx.beginPath();
+        ctx.moveTo(px + cell * 0.5, py + m);
+        ctx.lineTo(px + tam + m, py + cell * 0.5);
+        ctx.lineTo(px + cell * 0.5, py + tam + m);
+        ctx.lineTo(px + m, py + cell * 0.5);
+        ctx.closePath();
+        ctx.stroke();
+
+    } else if (skin === 'Sombria') {
+
+        ctx.fillStyle =
+            (i % 3 === 0)
+                ? '#1a1a22'
+                : '#050508';
+
+        ctx.fillRect(px + m, py + m, tam, tam);
+
+        ctx.strokeStyle = 'rgba(140, 120, 200, 0.35)';
+        ctx.lineWidth = Math.max(1, cell * 0.04);
+        ctx.strokeRect(px + m, py + m, tam, tam);
+
+    } else if (skin === 'Aurora') {
+
+        const matiz =
+            (i * 12 + Date.now() / 40) % 360;
+
+        ctx.globalAlpha = 0.85;
+        ctx.fillStyle =
+            `hsl(${matiz}, 70%, 70%)`;
+
+        ctx.fillRect(px + m, py + m, tam, tam);
+
+        ctx.globalAlpha = 1;
+
+    } else if (skin === 'Vulcanica') {
+
+        ctx.fillStyle = '#1a0a05';
+        ctx.fillRect(px + m, py + m, tam, tam);
+
+        const brilho =
+            Math.sin(Date.now() / 120 + i) * 0.5 + 0.5;
+
+        ctx.fillStyle =
+            `rgba(255, ${(80 + brilho * 80) | 0}, 0, ${0.5 + brilho * 0.5})`;
+
+        ctx.fillRect(
+            px + cell * 0.35,
+            py + cell * 0.35,
+            cell * 0.3,
+            cell * 0.3
+        );
+
+    } else if (skin === 'Eletrica') {
+
+        const pulso =
+            Math.sin(Date.now() / 80 + i * 1.1) * 0.5 + 0.5;
+
+        ctx.shadowBlur = cell * (0.4 + pulso * 0.5);
+        ctx.shadowColor = '#7ad0ff';
+        ctx.fillStyle = '#1e6fbf';
+
+        ctx.fillRect(px + m, py + m, tam, tam);
+
+        ctx.fillStyle =
+            `rgba(220, 240, 255, ${0.4 + pulso * 0.5})`;
+
+        ctx.fillRect(
+            px + cell * 0.4,
+            py + m,
+            cell * 0.2,
+            tam
+        );
+
+    } else if (skin === 'Prateada') {
+
+        const grad =
+            ctx.createLinearGradient(px, py, px + cell, py + cell);
+
+        grad.addColorStop(0, '#b8b8c0');
+        grad.addColorStop(0.5, '#f4f4f8');
+        grad.addColorStop(1, '#8c8c94');
+
+        ctx.fillStyle = grad;
+        ctx.fillRect(px + m, py + m, tam, tam);
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px + m, py + m, tam, tam);
+
+    } else if (skin === 'Sanguinea') {
+
+        const pulso =
+            Math.sin(Date.now() / 160 + i * 0.7) * 0.5 + 0.5;
+
+        ctx.shadowBlur = cell * (0.25 + pulso * 0.35);
+        ctx.shadowColor = '#a00010';
+        ctx.fillStyle = '#6a0010';
+
+        ctx.fillRect(px + m, py + m, tam, tam);
+
+        ctx.fillStyle =
+            `rgba(255, 20, 40, ${0.3 + pulso * 0.3})`;
+
+        ctx.fillRect(
+            px + cell * 0.3,
+            py + cell * 0.3,
+            cell * 0.25,
+            cell * 0.25
+        );
+
+    } else if (skin === 'Realeza') {
+
+        const grad =
+            ctx.createLinearGradient(px, py, px + cell, py + cell);
+
+        grad.addColorStop(0, '#3a0a5c');
+        grad.addColorStop(0.5, '#7a2fc0');
+        grad.addColorStop(1, '#ffd75a');
+
+        ctx.fillStyle = grad;
+        ctx.fillRect(px + m, py + m, tam, tam);
+
+        ctx.strokeStyle = '#ffe89a';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px + m, py + m, tam, tam);
+
+    } else if (skin === 'Marinha') {
+
+        const onda =
+            Math.sin(Date.now() / 150 + i * 0.6) * 0.5 + 0.5;
+
+        const azul1 = [0, 40, 90];
+        const azul2 = [0, 130, 180];
+
+        const r = (azul1[0] + (azul2[0] - azul1[0]) * onda) | 0;
+        const g = (azul1[1] + (azul2[1] - azul1[1]) * onda) | 0;
+        const b = (azul1[2] + (azul2[2] - azul1[2]) * onda) | 0;
+
+        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+        ctx.fillRect(px + m, py + m, tam, tam);
+
+    } else if (skin === 'Celestial') {
+
+        ctx.fillStyle = '#0a1030';
+        ctx.fillRect(px + m, py + m, tam, tam);
+
+        const semente =
+            (i * 5501 + 13001) % 199999;
+
+        const numEstrelas = 3;
+
+
+        for (let e = 0; e < numEstrelas; e++) {
+
+            const s1 =
+                (semente * (e + 1) * 7013 + Date.now() / 500) % 199999;
+
+            const s2 =
+                (semente * (e + 2) * 3011) % 199999;
+
+            const ex =
+                px + m + (s1 / 199999) * tam;
+
+            const ey =
+                py + m + (s2 / 199999) * tam;
+
+            ctx.fillStyle = '#bcd8ff';
+
+            ctx.fillRect(ex, ey, Math.max(1, cell * 0.08), Math.max(1, cell * 0.08));
+
+        }
+
+    } else if (skin === 'Colossal') {
+
+        /* Skin premium: o segmento ocupa
+           2 células de largura de verdade
+           (fisicamente, não só visualmente) —
+           o desenho aqui cobre exatamente as
+           2 células da hitbox. */
+
+        const larguraDupla =
+            (cell * 2) - (m * 2);
+
+        ctx.fillStyle = color;
+
+        ctx.fillRect(
+            px + m,
+            py + m,
+            larguraDupla,
+            tam
+        );
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = Math.max(1, cell * 0.05);
+
+        ctx.strokeRect(
+            px + m,
+            py + m,
+            larguraDupla,
+            tam
+        );
+
     } else {
 
         /* Sólida (padrão) */
@@ -1140,14 +1460,95 @@ function isObstacle(p) {
 }
 
 
+/* =========================================================
+   CÉLULAS OCUPADAS POR UM SEGMENTO
+
+   Normalmente um segmento ocupa 1 célula.
+   A skin Colossal ocupa 2 células lado a
+   lado (largura dupla) — isso é usado tanto
+   para desenhar quanto para toda a física
+   (colisão com parede, obstáculo, corpo e
+   captura de comida).
+========================================================= */
+
+function normalizarCelula(c) {
+
+    if (mapMode !== 'SemParede') {
+
+        return c;
+
+    }
+
+
+    let x = c.x;
+
+    let y = c.y;
+
+
+    if (x < 0) {
+
+        x = mapSize - 1;
+
+    }
+
+    if (x >= mapSize) {
+
+        x = 0;
+
+    }
+
+    if (y < 0) {
+
+        y = mapSize - 1;
+
+    }
+
+    if (y >= mapSize) {
+
+        y = 0;
+
+    }
+
+
+    return {
+        x: x,
+        y: y
+    };
+
+}
+
+
+function celulasOcupadasPorSegmento(p) {
+
+    const base =
+        (skin === 'Colossal')
+            ? [
+                { x: p.x, y: p.y },
+                { x: p.x + 1, y: p.y }
+            ]
+            : [
+                { x: p.x, y: p.y }
+            ];
+
+
+    return base.map(
+        normalizarCelula
+    );
+
+}
+
+
 function occupied(p) {
 
     return (
 
         s.some(
             q =>
-                q.x === p.x &&
-                q.y === p.y
+                celulasOcupadasPorSegmento(q).some(
+                    c =>
+                        c.x === p.x &&
+                        c.y === p.y
+                )
         ) ||
 
         isObstacle(p) ||
@@ -2080,37 +2481,58 @@ function move() {
 
         }
 
-    } else if (
+    } else {
 
-        h.x < 0 ||
+        const foraDosLimites =
+            celulasOcupadasPorSegmento(h).some(
+                c =>
+                    c.x < 0 ||
+                    c.x >= mapSize ||
+                    c.y < 0 ||
+                    c.y >= mapSize
+            );
 
-        h.x >= mapSize ||
 
-        h.y < 0 ||
+        if (foraDosLimites) {
 
-        h.y >= mapSize
+            end();
 
-    ) {
+            return;
 
-        end();
-
-        return;
+        }
 
     }
 
 
-    if (
+    /* Todas as células realmente
+       ocupadas pela cabeça (2 no
+       caso da skin Colossal) */
 
-        isObstacle(h) ||
+    const celulasHead =
+        celulasOcupadasPorSegmento(h);
+
+
+    const colidiu =
+
+        celulasHead.some(
+            c => isObstacle(c)
+        ) ||
 
         s.some(
             (p, i) =>
                 i &&
-                p.x === h.x &&
-                p.y === h.y
-        )
+                celulasOcupadasPorSegmento(p).some(
+                    bc =>
+                        celulasHead.some(
+                            hc =>
+                                hc.x === bc.x &&
+                                hc.y === bc.y
+                        )
+                )
+        );
 
-    ) {
+
+    if (colidiu) {
 
         end();
 
@@ -2129,8 +2551,11 @@ function move() {
     const idxComida =
         foods.findIndex(
             f =>
-                f.x === h.x &&
-                f.y === h.y
+                celulasHead.some(
+                    c =>
+                        c.x === f.x &&
+                        c.y === f.y
+                )
         );
 
 
@@ -2201,8 +2626,11 @@ function move() {
         rgbOn &&
         rgb &&
 
-        h.x === rgb.x &&
-        h.y === rgb.y
+        celulasHead.some(
+            c =>
+                c.x === rgb.x &&
+                c.y === rgb.y
+        )
 
     ) {
 
@@ -2877,7 +3305,7 @@ function begin() {
     reset();
 
 
-    run = true;
+    run = false;
 
     paused = false;
 
@@ -2887,18 +3315,90 @@ function begin() {
 
     resize();
 
-
-    const now =
-        performance.now();
+    draw();
 
 
-    lastMove =
-        now;
+    iniciarContagemRegressiva();
+
+}
 
 
-    requestAnimationFrame(
-        loop
-    );
+/* =========================================================
+   CONTAGEM REGRESSIVA (3, 2, 1) ANTES DE COMEÇAR
+========================================================= */
+
+function iniciarContagemRegressiva() {
+
+    let restante = 3;
+
+    const elContagem =
+        $('contagem');
+
+
+    elContagem.textContent =
+        restante;
+
+    elContagem
+        .classList
+        .remove('hide');
+
+
+    const intervalo =
+        setInterval(
+            () => {
+
+                restante--;
+
+
+                if (restante > 0) {
+
+                    elContagem.textContent =
+                        restante;
+
+                    return;
+
+                }
+
+
+                clearInterval(intervalo);
+
+                elContagem
+                    .classList
+                    .add('hide');
+
+
+                /* Zera o relógio da partida
+                   só agora, para os 3 segundos
+                   de contagem não contarem
+                   como tempo de jogo */
+
+                start =
+                    performance.now();
+
+                totalPaused = 0;
+
+                pausedAt = 0;
+
+
+                const now =
+                    performance.now();
+
+                lastMove =
+                    now;
+
+
+                run = true;
+
+                paused = false;
+
+
+                requestAnimationFrame(
+                    loop
+                );
+
+            },
+            1000
+        );
 
 }
 
@@ -3381,18 +3881,39 @@ function renderTemas() {
             .map(
                 t => {
 
+                    const cores =
+                        T[t];
+
                     const ativo =
-                        (t === theme)
-                            ? 'ativo'
-                            : '';
+                        (t === theme);
+
+                    const corPrincipal =
+                        col(cores[1]);
+
+                    const corSecundaria =
+                        col(cores[2]);
+
+                    const corBorda =
+                        col(cores[3]);
+
+                    const acaoHtml =
+                        ativo
+                            ? `<span class="tagSelecionada">SELECIONADA</span>`
+                            : `<button class="botaoSelecionar" data-tema="${t}">Selecionar</button>`;
 
                     return `
-                        <button
-                            class="opcaoLista ${ativo}"
-                            data-tema="${t}"
-                        >
-                            ${t}
-                        </button>
+                        <div class="linhaSkin ${ativo ? 'ativa' : ''}">
+                            <div
+                                class="previaSkin"
+                                style="background: linear-gradient(135deg, ${corPrincipal}, ${corSecundaria}); border-color: ${corBorda};"
+                            ></div>
+                            <div class="infoSkin">
+                                <b>${t}</b>
+                            </div>
+                            <div class="acaoSkin">
+                                ${acaoHtml}
+                            </div>
+                        </div>
                     `;
 
                 }
