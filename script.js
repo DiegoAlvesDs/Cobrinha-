@@ -1288,8 +1288,10 @@ function move() {
             if (mapMode === 'Tempo' && gameTime >= LIMITE_TEMPO_MODO) { end(); return; }
             if (mapMode === 'Caos' && gameTime >= proximoEventoCaos) dispararEventoCaos();
 
-            if (now - lastMove >= 1000 / velocidadeAtual()) {
-                lastMove = now;
+            const intervaloMovimento = 1000 / velocidadeAtual();
+
+            if (now - lastMove >= intervaloMovimento) {
+                lastMove += intervaloMovimento;
                 move();
             }
 
