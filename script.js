@@ -970,29 +970,36 @@ window.onkeydown = e => {
 };
 
 let sx = 0, sy = 0;
+let swipeAtivo = false;
 
 cv.ontouchstart = e => {
     sx = e.touches[0].clientX;
     sy = e.touches[0].clientY;
+    swipeAtivo = false;
 };
 
 cv.ontouchmove = e => {
     e.preventDefault();
 
+    if (swipeAtivo) return;
+
     const x = e.touches[0].clientX - sx;
     const y = e.touches[0].clientY - sy;
 
-    if (Math.max(Math.abs(x), Math.abs(y)) < 15) return;
+    if (Math.max(Math.abs(x), Math.abs(y)) < 20) return;
 
     if (Math.abs(x) > Math.abs(y)) {
         setDir(direcaoAtiva(x > 0 ? 'RIGHT' : 'LEFT'));
     } else {
         setDir(direcaoAtiva(y > 0 ? 'DOWN' : 'UP'));
     }
+
+    swipeAtivo = true;
 };
 
 cv.ontouchend = e => {
     e.preventDefault();
+    swipeAtivo = false;
 };
 
 function configurarDpad() {
