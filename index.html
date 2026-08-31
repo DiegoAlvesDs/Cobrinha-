@@ -7,6 +7,8 @@
         content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
     >
     <title>Cobrinha Infinita PRO</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -35,37 +37,31 @@
                 placeholder="Nome do jogador"
             >
 
+            <div class="navRow">
+                <button id="openSkins">💎 Skins</button>
+                <button id="rank">🏆 Ranking</button>
+            </div>
+
+            <div class="optionGroup">
+                <label>Tema</label>
+                <div id="listaTemas" class="temaGrid"></div>
+            </div>
+
+            <div class="optionGroup">
+                <label>Dificuldade</label>
+                <div id="listaDificuldades" class="listaOpcoes pillGridInline"></div>
+            </div>
+
+            <div class="optionGroup">
+                <label>Modo de mapa</label>
+                <div id="listaModos" class="listaOpcoes pillGridInline"></div>
+            </div>
+
             <button id="play">▶ PLAY</button>
-            <button id="openTema">🎨 TEMA</button>
-            <button id="openModo">🗺️ MODO DE MAPA</button>
-            <button id="openSkins">💎 SKINS</button>
-            <button id="openDiff">⚡ DIFICULDADE</button>
-            <button id="rank">🏆 RANKING</button>
 
             <small>
                 Deslize ou use as setas para controlar a cobra
             </small>
-        </section>
-
-        <!-- MENU: TEMA -->
-        <section id="menuTema" class="screen hide">
-            <h2>🎨 TEMA</h2>
-            <div id="listaTemas" class="listaSkinsContainer"></div>
-            <button class="voltarMenu">← VOLTAR</button>
-        </section>
-
-        <!-- MENU: DIFICULDADE -->
-        <section id="menuDiff" class="screen hide">
-            <h2>⚡ DIFICULDADE</h2>
-            <div id="listaDificuldades" class="listaOpcoes"></div>
-            <button class="voltarMenu">← VOLTAR</button>
-        </section>
-
-        <!-- MENU: MODO DE MAPA -->
-        <section id="menuModo" class="screen hide">
-            <h2>🗺️ MODO DE MAPA</h2>
-            <div id="listaModos" class="listaOpcoes"></div>
-            <button class="voltarMenu">← VOLTAR</button>
         </section>
 
         <!-- MENU: SKINS -->
