@@ -970,14 +970,29 @@ window.onkeydown = e => {
 };
 
 let sx = 0, sy = 0;
-cv.ontouchstart = e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; };
-cv.ontouchmove = e => { e.preventDefault(); };
+
+cv.ontouchstart = e => {
+    sx = e.touches[0].clientX;
+    sy = e.touches[0].clientY;
+};
+
+cv.ontouchmove = e => {
+    e.preventDefault();
+
+    const x = e.touches[0].clientX - sx;
+    const y = e.touches[0].clientY - sy;
+
+    if (Math.max(Math.abs(x), Math.abs(y)) < 15) return;
+
+    if (Math.abs(x) > Math.abs(y)) {
+        setDir(direcaoAtiva(x > 0 ? 'RIGHT' : 'LEFT'));
+    } else {
+        setDir(direcaoAtiva(y > 0 ? 'DOWN' : 'UP'));
+    }
+};
+
 cv.ontouchend = e => {
-    const x = e.changedTouches[0].clientX - sx;
-    const y = e.changedTouches[0].clientY - sy;
-    if (Math.max(Math.abs(x), Math.abs(y)) < 25) return;
-    if (Math.abs(x) > Math.abs(y)) setDir(direcaoAtiva(x > 0 ? 'RIGHT' : 'LEFT'));
-    else setDir(direcaoAtiva(y > 0 ? 'DOWN' : 'UP'));
+    e.preventDefault();
 };
 
 function configurarDpad() {
