@@ -1,147 +1,147 @@
-<!doctype html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
-    >
-    <title>Cobrinha Infinita PRO</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div class="app">
-        <header>
-            <b>🐍 COBRINHA INFINITA PRO</b>
-            <span>
-                <button id="menu">☰</button>
-                <button id="pause">Ⅱ</button>
-            </span>
-        </header>
-
-        <!-- MENU PRINCIPAL -->
-        <section id="home" class="screen">
-            <h1>PYTHON SNAKE</h1>
-            <p>Cobrinha Infinita PRO</p>
-
-            <div class="statusBar">
-                <span>🪙 <b id="homeCoins">0</b></span>
-                <span>⭐ Nível <b id="homeLevel">1</b></span>
-            </div>
-
-            <input
-                id="name"
-                maxlength="12"
-                placeholder="Nome do jogador"
-            >
-
-            <div class="navRow">
-                <button id="openSkins">💎 Skins</button>
-                <button id="rank">🏆 Ranking</button>
-            </div>
-
-            <div class="optionGroup">
-                <label>Tema</label>
-                <div id="listaTemas" class="temaGrid"></div>
-            </div>
-
-            <div class="optionGroup">
-                <label>Dificuldade</label>
-                <div id="listaDificuldades" class="listaOpcoes pillGridInline"></div>
-            </div>
-
-            <div class="optionGroup">
-                <label>Modo de mapa</label>
-                <div id="listaModos" class="listaOpcoes pillGridInline"></div>
-            </div>
-
-            <button id="play">▶ PLAY</button>
-
-            <small>
-                Deslize ou use as setas para controlar a cobra
-            </small>
-        </section>
-
-        <!-- MENU: SKINS -->
-        <section id="menuSkins" class="screen hide">
-            <h2>💎 SKINS</h2>
-
-            <div class="statusBar">
-                <span>🪙 <b id="skinsCoins">0</b></span>
-                <span>⭐ Nível <b id="skinsLevel">1</b></span>
-            </div>
-
-            <div id="listaSkins" class="listaSkinsContainer"></div>
-            <button class="voltarMenu">← VOLTAR</button>
-        </section>
-
-        <!-- RANKING -->
-        <section id="ranking" class="screen hide">
-            <h2>🏆 RANKING</h2>
-
-            <select id="rankModoSelect" class="seletorModo"></select>
-
-            <div id="scores"></div>
-            <button id="back">← VOLTAR</button>
-        </section>
-
-        <!-- JOGO -->
-        <section id="game" class="hide">
-            <div class="hud">
+    <!doctype html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+        >
+        <title>Cobrinha Infinita PRO</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+        <div class="app">
+            <header>
+                <b>🐍 Feito Por Diego</b>
                 <span>
-                    Pontos:
-                    <b id="score">0</b>
+                    <button id="menu">☰</button>
+                    <button id="pause">Ⅱ</button>
                 </span>
-                <span>
-                    Tempo:
-                    <b id="time">0s</b>
-                </span>
-                <span id="lvl">
-                    Nível 1
-                </span>
-                <span id="dh">
-                    Normal
-                </span>
-            </div>
-            <div id="wrap">
-                <canvas id="canvas"></canvas>
-                <label>
-                    MAPA 60×60
-                </label>
-                <div id="toastEvento" class="hide"></div>
-                <div id="contagem" class="hide"></div>
-            </div>
+            </header>
 
-            <!-- D-PAD DE SETAS -->
-            <div id="dpad">
-                <div class="dpadRow">
-                    <button id="dpadUp" class="dpadBtn" aria-label="Cima">▲</button>
-                </div>
-                <div class="dpadRow">
-                    <button id="dpadLeft" class="dpadBtn" aria-label="Esquerda">◀</button>
-                    <button id="dpadDown" class="dpadBtn" aria-label="Baixo">▼</button>
-                    <button id="dpadRight" class="dpadBtn" aria-label="Direita">▶</button>
-                </div>
-            </div>
-        </section>
+            <!-- MENU PRINCIPAL -->
+            <section id="home" class="screen">
+                <h1>PYTHON SNAKE</h1>
+                <p>Obrigado por jogar! Divirta-se!</p>
 
-        <div id="overlay" class="hide">
-            <div>
-                <h2>PAUSADO</h2>
-                <button id="cont">
-                    ▶ CONTINUAR
-                </button>
-                <button id="reset">
-                    ↻ RESET
-                </button>
-                <button id="tomenu">
-                    ☰ MENU
-                </button>
+                <div class="statusBar">
+                    <span>🪙 <b id="homeCoins">0</b></span>
+                    <span>⭐ Nível <b id="homeLevel">1</b></span>
+                </div>
+
+                <input
+                    id="name"
+                    maxlength="12"
+                    placeholder="Nome do jogador"
+                >
+
+                <div class="navRow">
+                    <button id="openSkins">💎 Skins</button>
+                    <button id="rank">🏆 Ranking</button>
+                </div>
+
+                <div class="optionGroup">
+                    <label>Tema</label>
+                    <div id="listaTemas" class="temaGrid"></div>
+                </div>
+
+                <div class="optionGroup">
+                    <label>Dificuldade</label>
+                    <div id="listaDificuldades" class="listaOpcoes pillGridInline"></div>
+                </div>
+
+                <div class="optionGroup">
+                    <label>Modo de mapa</label>
+                    <div id="listaModos" class="listaOpcoes pillGridInline"></div>
+                </div>
+
+                <button id="play">▶ PLAY</button>
+
+                <small>
+                    Deslize ou use as setas para controlar a cobra
+                </small>
+            </section>
+
+            <!-- MENU: SKINS -->
+            <section id="menuSkins" class="screen hide">
+                <h2>💎 SKINS</h2>
+
+                <div class="statusBar">
+                    <span>🪙 <b id="skinsCoins">0</b></span>
+                    <span>⭐ Nível <b id="skinsLevel">1</b></span>
+                </div>
+
+                <div id="listaSkins" class="listaSkinsContainer"></div>
+                <button class="voltarMenu">← VOLTAR</button>
+            </section>
+
+            <!-- RANKING -->
+            <section id="ranking" class="screen hide">
+                <h2>🏆 RANKING</h2>
+
+                <select id="rankModoSelect" class="seletorModo"></select>
+
+                <div id="scores"></div>
+                <button id="back">← VOLTAR</button>
+            </section>
+
+            <!-- JOGO -->
+            <section id="game" class="hide">
+                <div class="hud">
+                    <span>
+                        Pontos:
+                        <b id="score">0</b>
+                    </span>
+                    <span>
+                        Tempo:
+                        <b id="time">0s</b>
+                    </span>
+                    <span id="lvl">
+                        Nível 1
+                    </span>
+                    <span id="dh">
+                        Normal
+                    </span>
+                </div>
+                <div id="wrap">
+                    <canvas id="canvas"></canvas>
+                    <label>
+                        MAPA 60×60
+                    </label>
+                    <div id="toastEvento" class="hide"></div>
+                    <div id="contagem" class="hide"></div>
+                </div>
+
+                <!-- D-PAD DE SETAS -->
+                <div id="dpad">
+                    <div class="dpadRow">
+                        <button id="dpadUp" class="dpadBtn" aria-label="Cima">▲</button>
+                    </div>
+                    <div class="dpadRow">
+                        <button id="dpadLeft" class="dpadBtn" aria-label="Esquerda">◀</button>
+                        <button id="dpadDown" class="dpadBtn" aria-label="Baixo">▼</button>
+                        <button id="dpadRight" class="dpadBtn" aria-label="Direita">▶</button>
+                    </div>
+                </div>
+            </section>
+
+            <div id="overlay" class="hide">
+                <div>
+                    <h2>PAUSADO</h2>
+                    <button id="cont">
+                        ▶ CONTINUAR
+                    </button>
+                    <button id="reset">
+                        ↻ RESET
+                    </button>
+                    <button id="tomenu">
+                        ☰ MENU
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
-    <script src="script.js"></script>
-</body>
-</html>
+        <script src="script.js"></script>
+    </body>
+    </html>
