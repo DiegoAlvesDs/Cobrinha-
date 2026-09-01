@@ -554,33 +554,6 @@ function desenharSegmento(px, py, cell, i, tamanho) {
         ctx.lineWidth = Math.max(1, cell * 0.04);
         ctx.strokeRect(px + m, py + m, tam, tam);
 
-
-        ctx.fillStyle = '#fff3d6';
-        ctx.fillRect(px + m, py + m + capaAltura, tamanhoQuadrado, tamanhoQuadrado - capaAltura);
-        ctx.strokeStyle = 'rgba(120, 90, 40, 0.4)';
-        ctx.lineWidth = Math.max(1, cell * 0.03);
-        ctx.strokeRect(px + m, py + m + capaAltura, tamanhoQuadrado, tamanhoQuadrado - capaAltura);
-
-        // boné (parte de cima)
-        const gradCapa = ctx.createLinearGradient(px, py, px, py + capaAltura);
-        gradCapa.addColorStop(0, '#ff7a6a');
-        gradCapa.addColorStop(1, '#c81e1e');
-        ctx.shadowBlur = cell * 0.25;
-        ctx.shadowColor = '#ff3c3c';
-        ctx.fillStyle = gradCapa;
-        ctx.fillRect(px + m, py + m, tamanhoQuadrado, capaAltura);
-        ctx.shadowBlur = 0;
-
-        // pintinhas brancas
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
-        ctx.beginPath(); ctx.arc(px + tamanhoQuadrado * 0.28, py + m + capaAltura * 0.4, cell * 0.13, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(px + tamanhoQuadrado * 0.7, py + m + capaAltura * 0.55, cell * 0.1, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(px + tamanhoQuadrado * 0.5, py + m + capaAltura * 0.18, cell * 0.09, 0, Math.PI * 2); ctx.fill();
-
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
-        ctx.lineWidth = Math.max(1, cell * 0.05);
-        ctx.strokeRect(px + m, py + m, tamanhoQuadrado, tamanhoQuadrado);
-
     } else if (skin === 'Cavaleiro') {
         const grad = ctx.createLinearGradient(px, py, px + cell, py + cell);
         grad.addColorStop(0, '#9aa0ac');
