@@ -40,15 +40,26 @@ function atualizarUIAuth() {
     if (!sb) { deslogadoEl.classList.add('hide'); return; }
     logadoEl.classList.toggle('hide', !usuarioLogado);
     deslogadoEl.classList.toggle('hide', !!usuarioLogado);
+    let textoBadge = '';
     if (usuarioLogado) {
         const nomeConta = (nomeDaConta(usuarioLogado) || 'Jogador').slice(0, 12);
-        const nick = (localStorage.snakeName || '').trim().slice(0, 12) || nomeConta;
+        const nick = nickDaConta || (localStorage.snakeName || '').trim().slice(0, 12) || nomeConta;
         const avatar = document.getElementById('authAvatar');
         const rotulo = document.getElementById('authNomeUsuario');
         if (avatar) avatar.textContent = nick.charAt(0);
         if (rotulo) rotulo.textContent = nick;
         const inputNome = document.getElementById('name');
         if (inputNome && !inputNome.value.trim()) inputNome.value = nick;
+        const provedor = (usuarioLogado.app_metadata && usuarioLogado.app_metadata.provider) || 'email';
+        const nomeProvedor = provedor === 'google' ? 'Google'
+            : provedor === 'facebook' ? 'Facebook'
+            : 'Email';
+        textoBadge = `✅ ${nomeProvedor} · ${nick}`;
+    }
+    const badgeRodape = document.getElementById('authBadgeRodape');
+    if (badgeRodape) {
+        badgeRodape.textContent = textoBadge;
+        badgeRodape.classList.toggle('hide', !textoBadge);
     }
 }
 
@@ -93,6 +104,7 @@ async function sair() {
     await sb.auth.signOut();
     usuarioLogado = null;
     ultimoSyncProgresso = 0;
+    nickDaConta = null;
     atualizarUIAuth();
 }
 
@@ -100,6 +112,7 @@ async function sair() {
    PROGRESSO NA CONTA (sync de moedas/XP/skins/nick)
 ========================================================= */
 let ultimoSyncProgresso = 0;
+let nickDaConta = null;
 
 async function tokenAuth() {
     if (!sb) return null;
@@ -112,7 +125,7 @@ async function tokenAuth() {
 
 function estadoProgresso() {
     return {
-        nick: (localStorage.snakeName || 'Jogador').slice(0, 12),
+        nick: (nickDaConta || localStorage.snakeName || 'Jogador').slice(0, 12),
         moedas: coins,
         xp: totalXP,
         skins: JSON.stringify([...ownedSkins]),
@@ -127,9 +140,10 @@ function estadoProgresso() {
 function aplicarProgresso(p) {
     if (!p) return;
     if (typeof p.nick === 'string' && p.nick) {
-        localStorage.snakeName = p.nick.slice(0, 12);
+        nickDaConta = p.nick.slice(0, 12);
+        localStorage.snakeName = nickDaConta;
         const inputNome = document.getElementById('name');
-        if (inputNome) inputNome.value = p.nick.slice(0, 12);
+        if (inputNome) inputNome.value = nickDaConta;
     }
     if (typeof p.moedas === 'number' && p.moedas >= 0) {
         coins = p.moedas;
@@ -222,6 +236,8 @@ async function sincronizarProgresso() {
 let timerNick = null;
 function nickAlterado() {
     if (!usuarioLogado) return;
+    const novoNick = (localStorage.snakeName || '').trim().slice(0, 12);
+    if (novoNick) nickDaConta = novoNick;
     clearTimeout(timerNick);
     timerNick = setTimeout(salvarProgresso, 1200);
 }
@@ -1700,19 +1716,20 @@ document.querySelectorAll('.voltarMenu').forEach(btn => { btn.onclick = home; })
 /* =========================================================
    LOGIN — BOTÕES
 ========================================================= */
-const botaoAbrirLogin = document.getElementById('openLogin');
-if (botaoAbrirLogin) {
-    botaoAbrirLogin.onclick = () => $('modalLogin').classList.remove('hide');
+function ligarBotao(id, acao) {
+    const el = document.getElementById(id);
+    if (el) el.onclick = acao;
 }
-$('fecharLogin').onclick = () => {
+ligarBotao('openLogin', () => $('modalLogin').classList.remove('hide'));
+ligarBotao('fecharLogin', () => {
     $('modalLogin').classList.add('hide');
     const msg = $('loginMensagem');
     if (msg) msg.classList.add('hide');
-};
-$('btnGoogle').onclick = () => entrarComProvider('google');
-$('btnFacebook').onclick = () => entrarComProvider('facebook');
-$('btnEmail').onclick = entrarComEmail;
-$('btnLogout').onclick = sair;
+});
+ligarBotao('btnGoogle', () => entrarComProvider('google'));
+ligarBotao('btnFacebook', () => entrarComProvider('facebook'));
+ligarBotao('btnEmail', entrarComEmail);
+ligarBotao('btnLogout', sair);
 
 /* =========================================================
    NOME
