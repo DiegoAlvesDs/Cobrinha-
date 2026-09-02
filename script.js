@@ -4,9 +4,233 @@
 const SUPABASE_URL = 'https://yfijtchpwohulhzamlre.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_5kL_MJ5oYHzD0X5OCecCmQ_TZ5h-HiI';
 
-async function salvarRanking(nome, pontuacao, tempo, modo) {
+/* =========================================================
+   LOGIN / CONTA (Supabase Auth)
+========================================================= */
+const sb = (window.supabase && typeof window.supabase.createClient === 'function')
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+        auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true
+        }
+    })
+    : null;
+let usuarioLogado = null;
+
+function nomeDaConta(user) {
+    if (!user) return null;
+    const meta = user.user_metadata || {};
+    return meta.full_name || meta.name || meta.user_name
+        || meta.preferred_username || (user.email ? user.email.split('@')[0] : null);
+}
+
+function mostrarMensagemLogin(texto, erro) {
+    const el = document.getElementById('loginMensagem');
+    if (!el) return;
+    el.textContent = texto;
+    el.classList.toggle('erro', !!erro);
+    el.classList.remove('hide');
+}
+
+function atualizarUIAuth() {
+    const logadoEl = document.getElementById('authLoggedIn');
+    const deslogadoEl = document.getElementById('authLoggedOut');
+    if (!logadoEl || !deslogadoEl) return;
+    if (!sb) { deslogadoEl.classList.add('hide'); return; }
+    logadoEl.classList.toggle('hide', !usuarioLogado);
+    deslogadoEl.classList.toggle('hide', !!usuarioLogado);
+    if (usuarioLogado) {
+        const nomeConta = (nomeDaConta(usuarioLogado) || 'Jogador').slice(0, 12);
+        const nick = (localStorage.snakeName || '').trim().slice(0, 12) || nomeConta;
+        const avatar = document.getElementById('authAvatar');
+        const rotulo = document.getElementById('authNomeUsuario');
+        if (avatar) avatar.textContent = nick.charAt(0);
+        if (rotulo) rotulo.textContent = nick;
+        const inputNome = document.getElementById('name');
+        if (inputNome && !inputNome.value.trim()) inputNome.value = nick;
+    }
+}
+
+async function entrarComProvider(provider) {
+    if (!sb) { mostrarMensagemLogin('Biblioteca de login não carregou. Verifique a conexão.', true); return; }
+    mostrarMensagemLogin('Abrindo janela de login...', false);
+    const { error } = await sb.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: window.location.origin + window.location.pathname }
+    });
+    if (error) {
+        mostrarMensagemLogin(
+            `Login com ${provider === 'google' ? 'Google' : 'Facebook'} indisponível: ative o provider no painel do Supabase (Authentication > Providers).`,
+            true
+        );
+    }
+}
+
+async function entrarComEmail() {
+    if (!sb) { mostrarMensagemLogin('Biblioteca de login não carregou. Verifique a conexão.', true); return; }
+    const input = document.getElementById('loginEmail');
+    const email = (input && input.value || '').trim();
+    if (!email || !email.includes('@')) {
+        mostrarMensagemLogin('Digite um email válido.', true);
+        return;
+    }
+    mostrarMensagemLogin('Enviando link...', false);
+    const { error } = await sb.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: window.location.origin + window.location.pathname }
+    });
+    if (error) {
+        mostrarMensagemLogin('Não foi possível enviar: ' + error.message, true);
+        return;
+    }
+    mostrarMensagemLogin('✉ Link enviado! Confira sua caixa de entrada (e o spam) e clique no link para entrar.', false);
+    if (input) input.value = '';
+}
+
+async function sair() {
+    if (!sb) return;
+    await sb.auth.signOut();
+    usuarioLogado = null;
+    ultimoSyncProgresso = 0;
+    atualizarUIAuth();
+}
+
+/* =========================================================
+   PROGRESSO NA CONTA (sync de moedas/XP/skins/nick)
+========================================================= */
+let ultimoSyncProgresso = 0;
+
+async function tokenAuth() {
+    if (!sb) return null;
     try {
-        const resposta = await fetch(`${SUPABASE_URL}/rest/v1/ranking`, {
+        const { data } = await sb.auth.getSession();
+        const sessao = data && data.session;
+        return sessao ? sessao.access_token : null;
+    } catch { return null; }
+}
+
+function estadoProgresso() {
+    return {
+        nick: (localStorage.snakeName || 'Jogador').slice(0, 12),
+        moedas: coins,
+        xp: totalXP,
+        skins: JSON.stringify([...ownedSkins]),
+        skin_ativa: skin,
+        tema: theme,
+        dificuldade: diff,
+        modo: mapMode,
+        atualizado_em: new Date().toISOString()
+    };
+}
+
+function aplicarProgresso(p) {
+    if (!p) return;
+    if (typeof p.nick === 'string' && p.nick) {
+        localStorage.snakeName = p.nick.slice(0, 12);
+        const inputNome = document.getElementById('name');
+        if (inputNome) inputNome.value = p.nick.slice(0, 12);
+    }
+    if (typeof p.moedas === 'number' && p.moedas >= 0) {
+        coins = p.moedas;
+        localStorage.snakeCoins = coins;
+    }
+    if (typeof p.xp === 'number' && p.xp >= 0) {
+        totalXP = p.xp;
+        localStorage.snakeXP = totalXP;
+    }
+    if (typeof p.skins === 'string') {
+        try {
+            const lista = JSON.parse(p.skins);
+            if (Array.isArray(lista)) {
+                ownedSkins = new Set(lista);
+                localStorage.snakeOwnedSkins = p.skins;
+            }
+        } catch { /* ignora skins corrompidas */ }
+    }
+    if (p.skin_ativa && SKIN_INFO[p.skin_ativa]) {
+        skin = p.skin_ativa;
+        localStorage.snakeSkin = skin;
+    }
+    if (p.tema && T[p.tema]) {
+        theme = p.tema;
+        localStorage.snakeTheme = theme;
+    }
+    if (p.dificuldade && D[p.dificuldade]) {
+        diff = p.dificuldade;
+        localStorage.snakeDiff = diff;
+    }
+    if (p.modo && MAPMODES.includes(p.modo)) {
+        mapMode = p.modo;
+        localStorage.snakeMapMode = mapMode;
+    }
+    apply();
+    atualizarStatusJogador();
+    renderTemas();
+    renderDificuldades();
+    renderModos();
+}
+
+async function salvarProgresso() {
+    if (!sb || !usuarioLogado) return;
+    try {
+        const token = await tokenAuth();
+        if (!token) return;
+        const resposta = await fetch(`${SUPABASE_URL}/rest/v1/perfis`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'resolution=merge-duplicates,return=minimal'
+            },
+            body: JSON.stringify({ user_id: usuarioLogado.id, ...estadoProgresso() })
+        });
+        if (!resposta.ok) console.error('Erro ao salvar progresso:', await resposta.text());
+    } catch (erro) {
+        console.error('Erro de conexão ao salvar progresso:', erro);
+    }
+}
+
+async function sincronizarProgresso() {
+    if (!sb || !usuarioLogado) return;
+    if (Date.now() - ultimoSyncProgresso < 5000) return;
+    ultimoSyncProgresso = Date.now();
+    try {
+        const token = await tokenAuth();
+        if (!token) return;
+        const resposta = await fetch(
+            `${SUPABASE_URL}/rest/v1/perfis?select=*&user_id=eq.${usuarioLogado.id}`,
+            { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token}` } }
+        );
+        if (!resposta.ok) {
+            console.error('Erro ao carregar progresso:', await resposta.text());
+            return;
+        }
+        const lista = await resposta.json();
+        if (lista && lista.length) {
+            aplicarProgresso(lista[0]);
+            atualizarUIAuth();
+        } else {
+            await salvarProgresso();
+        }
+    } catch (erro) {
+        console.error('Erro de conexão ao sincronizar progresso:', erro);
+    }
+}
+
+let timerNick = null;
+function nickAlterado() {
+    if (!usuarioLogado) return;
+    clearTimeout(timerNick);
+    timerNick = setTimeout(salvarProgresso, 1200);
+}
+
+async function salvarRanking(nome, pontuacao, tempo, modo) {
+    const corpo = { nome, pontuacao, tempo, modo, dificuldade: diff };
+    if (usuarioLogado) corpo.user_id = usuarioLogado.id;
+    try {
+        let resposta = await fetch(`${SUPABASE_URL}/rest/v1/ranking`, {
             method: 'POST',
             headers: {
                 'apikey': SUPABASE_KEY,
@@ -14,8 +238,21 @@ async function salvarRanking(nome, pontuacao, tempo, modo) {
                 'Content-Type': 'application/json',
                 'Prefer': 'return=minimal'
             },
-            body: JSON.stringify({ nome, pontuacao, tempo, modo, dificuldade: diff })
+            body: JSON.stringify(corpo)
         });
+        if (!resposta.ok && usuarioLogado) {
+            delete corpo.user_id;
+            resposta = await fetch(`${SUPABASE_URL}/rest/v1/ranking`, {
+                method: 'POST',
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify(corpo)
+            });
+        }
         if (!resposta.ok) console.error('Erro ao salvar ranking:', await resposta.text());
     } catch (erro) {
         console.error('Erro de conexão com Supabase:', erro);
@@ -128,13 +365,17 @@ const SKIN_INFO = {
     Dragao:    { nome: 'Dragão Ancestral', custo: 1500, nivel: 35 },
     Cavaleiro: { nome: 'Cavaleiro Medieval', custo: 2000, nivel: 36 },
     Runico:    { nome: 'Rúnico Ancestral', custo: 2100, nivel: 37 },
-    CircuitoNeon: { nome: 'Circuito Neon', custo: 2400, nivel: 40 },
-    Samurai:   { nome: 'Samurai Carmesim', custo: 2600, nivel: 42 },
     Titanio:   { nome: 'Titânio', custo: 2150, nivel: 39 },
+    CircuitoNeon: { nome: 'Circuito Neon', custo: 2400, nivel: 40 },
     Plasma:    { nome: 'Plasma', custo: 2450, nivel: 41 },
+    Samurai:   { nome: 'Samurai Carmesim', custo: 2600, nivel: 42 },
     Obsidiana: { nome: 'Obsidiana', custo: 2700, nivel: 43 },
     Quimera:   { nome: 'Quimera', custo: 2950, nivel: 44 },
+    Aco:       { nome: 'Aço', custo: 3050, nivel: 45 },
     Vazio:     { nome: 'Vazio', custo: 3300, nivel: 46 },
+    Bronze:    { nome: 'Bronze Antigo', custo: 3450, nivel: 47 },
+    Cromada:   { nome: 'Cromada', custo: 3700, nivel: 48 },
+    Mercurio:  { nome: 'Mercúrio', custo: 3900, nivel: 49 },
     Lendario:  { nome: 'Lendário', custo: 5000, nivel: 50 }
 };
 const SKINS = Object.keys(SKIN_INFO);
@@ -147,7 +388,6 @@ const SKINS = Object.keys(SKIN_INFO);
 const SKIN_ESCALA = {
     Colossal: 2,
 };
-
 function escalaAtual() {
     return SKIN_ESCALA[skin] || 1;
 }
@@ -169,7 +409,6 @@ let rank = JSON.parse(localStorage.snakeRank || '[]');
 let name = localStorage.snakeName || '';
 let mapMode = localStorage.snakeMapMode || 'Classico';
 let skin = localStorage.snakeSkin || 'Solida';
-
 if (skin === 'Cogumelo') {
     skin = 'Solida';
     localStorage.snakeSkin = skin;
@@ -241,7 +480,6 @@ $('name').value = name;
    COR
 ========================================================= */
 function col(a) { return `rgb(${a[0]}, ${a[1]}, ${a[2]})`; }
-
 function hexParaRgb(hex) {
     const v = hex.replace('#', '');
     return [parseInt(v.substring(0, 2), 16), parseInt(v.substring(2, 4), 16), parseInt(v.substring(4, 6), 16)];
@@ -265,25 +503,21 @@ function desenharSegmento(px, py, cell, i, tamanho) {
     if (skin === 'Listrada') {
         ctx.fillStyle = (i % 2 === 0) ? color : corEscura(color);
         ctx.fillRect(px + m, py + m, tam, tam);
-
     } else if (skin === 'Gradiente') {
         const t2 = tamanho > 1 ? i / (tamanho - 1) : 0;
         ctx.fillStyle = misturarComPreto(color, t2 * 0.65);
         ctx.fillRect(px + m, py + m, tam, tam);
-
     } else if (skin === 'Neon') {
         ctx.shadowBlur = cell * 0.6;
         ctx.shadowColor = color;
         ctx.fillStyle = color;
         ctx.fillRect(px + m, py + m, tam, tam);
-
     } else if (skin === 'Retro') {
         ctx.fillStyle = color;
         ctx.fillRect(px + m, py + m, tam, tam);
         ctx.strokeStyle = '#000';
         ctx.lineWidth = Math.max(1, cell * 0.08);
         ctx.strokeRect(px + m, py + m, tam, tam);
-
     } else if (skin === 'Gelo') {
         ctx.globalAlpha = 0.75;
         ctx.fillStyle = '#8fdcff';
@@ -292,7 +526,6 @@ function desenharSegmento(px, py, cell, i, tamanho) {
         ctx.strokeStyle = '#e0faff';
         ctx.lineWidth = Math.max(1, cell * 0.06);
         ctx.strokeRect(px + m * 1.5, py + m * 1.5, tam - m, tam - m);
-
     } else if (skin === 'Espinhada') {
         ctx.fillStyle = color;
         ctx.fillRect(px + m, py + m, tam, tam);
@@ -308,7 +541,6 @@ function desenharSegmento(px, py, cell, i, tamanho) {
         ctx.lineTo(px + cell + espinho, py + cell / 2);
         ctx.lineTo(px + cell, py + cell / 2 + espinho);
         ctx.closePath(); ctx.fill();
-
     } else if (skin === 'Fantasma') {
         ctx.globalAlpha = 0.45;
         ctx.fillStyle = color;
@@ -317,12 +549,10 @@ function desenharSegmento(px, py, cell, i, tamanho) {
         ctx.strokeStyle = color;
         ctx.lineWidth = Math.max(1, cell * 0.06);
         ctx.strokeRect(px + m, py + m, tam, tam);
-
     } else if (skin === 'ArcoIris') {
         const matiz = (i * 18 + Date.now() / 15) % 360;
         ctx.fillStyle = `hsl(${matiz}, 80%, 55%)`;
         ctx.fillRect(px + m, py + m, tam, tam);
-
     } else if (skin === 'Metalica') {
         const grad = ctx.createLinearGradient(px, py, px + cell, py + cell);
         grad.addColorStop(0, '#e8e8ee');
@@ -334,7 +564,6 @@ function desenharSegmento(px, py, cell, i, tamanho) {
         ctx.strokeStyle = 'rgba(0,0,0,0.35)';
         ctx.lineWidth = 1;
         ctx.strokeRect(px + m, py + m, tam, tam);
-
     } else if (skin === 'Fogo') {
         const onda = Math.sin(Date.now() / 90 + i) * 0.5 + 0.5;
         const fogoCores = [[255, 60, 0], [255, 150, 0], [255, 220, 60]];
@@ -349,12 +578,10 @@ function desenharSegmento(px, py, cell, i, tamanho) {
         ctx.shadowColor = `rgb(${r},${g},${b})`;
         ctx.fillStyle = `rgb(${r},${g},${b})`;
         ctx.fillRect(px + m, py + m, tam, tam);
-
     } else if (skin === 'Camuflada') {
         const tons = ['#3a4d2b', '#5a6b3a', '#2e3b22', '#6f7a4a'];
         ctx.fillStyle = tons[(i * 7 + Math.floor(px + py)) % tons.length];
         ctx.fillRect(px + m, py + m, tam, tam);
-
     } else if (skin === 'Dourada') {
         const brilho = Math.sin(Date.now() / 200 + i * 0.6) * 0.5 + 0.5;
         const grad = ctx.createLinearGradient(px, py, px + cell, py + cell);
@@ -366,7 +593,6 @@ function desenharSegmento(px, py, cell, i, tamanho) {
         ctx.strokeStyle = '#fff2b0';
         ctx.lineWidth = 1;
         ctx.strokeRect(px + m, py + m, tam, tam);
-
     } else if (skin === 'Toxica') {
         const pulso = Math.sin(Date.now() / 150 + i * 0.8) * 0.5 + 0.5;
         ctx.shadowBlur = cell * (0.3 + pulso * 0.4);
@@ -375,7 +601,6 @@ function desenharSegmento(px, py, cell, i, tamanho) {
         ctx.fillRect(px + m, py + m, tam, tam);
         ctx.fillStyle = `rgba(180, 255, 60, ${0.3 + pulso * 0.4})`;
         ctx.fillRect(px + cell * 0.3, py + cell * 0.3, cell * 0.25, cell * 0.25);
-
     } else if (skin === 'Estelar') {
         ctx.fillStyle = '#140a2e';
         ctx.fillRect(px + m, py + m, tam, tam);
@@ -388,7 +613,6 @@ function desenharSegmento(px, py, cell, i, tamanho) {
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(ex, ey, Math.max(1, cell * 0.08), Math.max(1, cell * 0.08));
         }
-
     } else if (skin === 'Cristal') {
         ctx.globalAlpha = 0.55;
         ctx.fillStyle = '#b39dff';
@@ -402,28 +626,24 @@ function desenharSegmento(px, py, cell, i, tamanho) {
         ctx.lineTo(px + cell * 0.5, py + tam + m);
         ctx.lineTo(px + m, py + cell * 0.5);
         ctx.closePath(); ctx.stroke();
-
     } else if (skin === 'Sombria') {
         ctx.fillStyle = (i % 3 === 0) ? '#1a1a22' : '#050508';
         ctx.fillRect(px + m, py + m, tam, tam);
         ctx.strokeStyle = 'rgba(140, 120, 200, 0.35)';
         ctx.lineWidth = Math.max(1, cell * 0.04);
         ctx.strokeRect(px + m, py + m, tam, tam);
-
     } else if (skin === 'Aurora') {
         const matiz = (i * 12 + Date.now() / 40) % 360;
         ctx.globalAlpha = 0.85;
         ctx.fillStyle = `hsl(${matiz}, 70%, 70%)`;
         ctx.fillRect(px + m, py + m, tam, tam);
         ctx.globalAlpha = 1;
-
     } else if (skin === 'Vulcanica') {
         ctx.fillStyle = '#1a0a05';
         ctx.fillRect(px + m, py + m, tam, tam);
         const brilho = Math.sin(Date.now() / 120 + i) * 0.5 + 0.5;
         ctx.fillStyle = `rgba(255, ${(80 + brilho * 80) | 0}, 0, ${0.5 + brilho * 0.5})`;
         ctx.fillRect(px + cell * 0.35, py + cell * 0.35, cell * 0.3, cell * 0.3);
-
     } else if (skin === 'Eletrica') {
         const pulso = Math.sin(Date.now() / 80 + i * 1.1) * 0.5 + 0.5;
         ctx.shadowBlur = cell * (0.4 + pulso * 0.5);
@@ -432,7 +652,6 @@ function desenharSegmento(px, py, cell, i, tamanho) {
         ctx.fillRect(px + m, py + m, tam, tam);
         ctx.fillStyle = `rgba(220, 240, 255, ${0.4 + pulso * 0.5})`;
         ctx.fillRect(px + cell * 0.4, py + m, cell * 0.2, tam);
-
     } else if (skin === 'Prateada') {
         const grad = ctx.createLinearGradient(px, py, px + cell, py + cell);
         grad.addColorStop(0, '#b8b8c0');
@@ -443,7 +662,6 @@ function desenharSegmento(px, py, cell, i, tamanho) {
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
         ctx.lineWidth = 1;
         ctx.strokeRect(px + m, py + m, tam, tam);
-
     } else if (skin === 'Sanguinea') {
         const pulso = Math.sin(Date.now() / 160 + i * 0.7) * 0.5 + 0.5;
         ctx.shadowBlur = cell * (0.25 + pulso * 0.35);
@@ -452,7 +670,6 @@ function desenharSegmento(px, py, cell, i, tamanho) {
         ctx.fillRect(px + m, py + m, tam, tam);
         ctx.fillStyle = `rgba(255, 20, 40, ${0.3 + pulso * 0.3})`;
         ctx.fillRect(px + cell * 0.3, py + cell * 0.3, cell * 0.25, cell * 0.25);
-
     } else if (skin === 'Realeza') {
         const grad = ctx.createLinearGradient(px, py, px + cell, py + cell);
         grad.addColorStop(0, '#3a0a5c');
@@ -463,7 +680,6 @@ function desenharSegmento(px, py, cell, i, tamanho) {
         ctx.strokeStyle = '#ffe89a';
         ctx.lineWidth = 1;
         ctx.strokeRect(px + m, py + m, tam, tam);
-
     } else if (skin === 'Marinha') {
         const onda = Math.sin(Date.now() / 150 + i * 0.6) * 0.5 + 0.5;
         const a1 = [0, 40, 90], a2 = [0, 130, 180];
@@ -472,7 +688,6 @@ function desenharSegmento(px, py, cell, i, tamanho) {
         const b = (a1[2] + (a2[2] - a1[2]) * onda) | 0;
         ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
         ctx.fillRect(px + m, py + m, tam, tam);
-
     } else if (skin === 'Celestial') {
         ctx.fillStyle = '#0a1030';
         ctx.fillRect(px + m, py + m, tam, tam);
@@ -485,38 +700,31 @@ function desenharSegmento(px, py, cell, i, tamanho) {
             ctx.fillStyle = '#bcd8ff';
             ctx.fillRect(ex, ey, Math.max(1, cell * 0.08), Math.max(1, cell * 0.08));
         }
-
     } else if (skin === 'Colossal') {
         /* Ocupa fisicamente um bloco 2x2 (célula
            atual + as 3 vizinhas: direita, baixo e
            diagonal) — o desenho é um quadrado do
            mesmo tamanho da hitbox real. */
         const tamanhoQuadrado = (cell * 2) - (m * 2);
-
         ctx.fillStyle = color;
         ctx.fillRect(px + m, py + m, tamanhoQuadrado, tamanhoQuadrado);
-
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
         ctx.lineWidth = Math.max(1, cell * 0.05);
         ctx.strokeRect(px + m, py + m, tamanhoQuadrado, tamanhoQuadrado);
-
     } else if (skin === 'Fenix') {
         const pulso = Math.sin(Date.now() / 100 + i * 0.5) * 0.5 + 0.5;
         const cx = px + cell / 2, cy = py + cell / 2;
-
         const grad = ctx.createRadialGradient(cx, cy, cell * 0.05, cx, cy, cell * 0.55);
         grad.addColorStop(0, '#fff6d0');
         grad.addColorStop(0.35, '#ffb020');
         grad.addColorStop(0.7, '#ff5500');
         grad.addColorStop(1, `rgba(160, 20, 0, ${0.35 + pulso * 0.3})`);
-
         ctx.shadowBlur = cell * (0.5 + pulso * 0.4);
         ctx.shadowColor = '#ff6a00';
         ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.arc(cx, cy, cell * 0.44, 0, Math.PI * 2);
         ctx.fill();
-
         for (let k = 0; k < 2; k++) {
             const ang = ((i * 47 + k * 180 + Date.now() / 18) % 360) * Math.PI / 180;
             const dist = cell * 0.4;
@@ -525,7 +733,6 @@ function desenharSegmento(px, py, cell, i, tamanho) {
             ctx.fillStyle = 'rgba(255, 225, 140, 0.85)';
             ctx.fillRect(fx, fy, cell * 0.09, cell * 0.09);
         }
-
     } else if (skin === 'Dragao') {
         const grad = ctx.createLinearGradient(px, py, px + cell, py + cell);
         grad.addColorStop(0, '#0a2e1a');
@@ -533,7 +740,6 @@ function desenharSegmento(px, py, cell, i, tamanho) {
         grad.addColorStop(1, '#0a2e1a');
         ctx.fillStyle = grad;
         ctx.fillRect(px + m, py + m, tam, tam);
-
         ctx.fillStyle = 'rgba(255, 215, 90, 0.28)';
         ctx.beginPath();
         ctx.arc(px + cell * 0.3, py + cell * 0.32, cell * 0.11, 0, Math.PI * 2);
@@ -541,7 +747,6 @@ function desenharSegmento(px, py, cell, i, tamanho) {
         ctx.beginPath();
         ctx.arc(px + cell * 0.68, py + cell * 0.62, cell * 0.11, 0, Math.PI * 2);
         ctx.fill();
-
         ctx.fillStyle = '#ffd75a';
         ctx.beginPath();
         ctx.moveTo(px + cell * 0.5 - cell * 0.13, py + m);
@@ -549,11 +754,9 @@ function desenharSegmento(px, py, cell, i, tamanho) {
         ctx.lineTo(px + cell * 0.5 + cell * 0.13, py + m);
         ctx.closePath();
         ctx.fill();
-
         ctx.strokeStyle = 'rgba(255, 215, 90, 0.5)';
         ctx.lineWidth = Math.max(1, cell * 0.04);
         ctx.strokeRect(px + m, py + m, tam, tam);
-
     } else if (skin === 'Cavaleiro') {
         const grad = ctx.createLinearGradient(px, py, px + cell, py + cell);
         grad.addColorStop(0, '#9aa0ac');
@@ -569,7 +772,6 @@ function desenharSegmento(px, py, cell, i, tamanho) {
             ctx.fillRect(px + cell * 0.44, py + cell * 0.18, cell * 0.12, cell * 0.64);
             ctx.fillRect(px + cell * 0.22, py + cell * 0.42, cell * 0.56, cell * 0.12);
         }
-
     } else if (skin === 'CircuitoNeon') {
         ctx.fillStyle = '#050b12';
         ctx.fillRect(px + m, py + m, tam, tam);
@@ -592,7 +794,6 @@ function desenharSegmento(px, py, cell, i, tamanho) {
         ctx.beginPath();
         ctx.arc(px + cell * 0.4, py + cell * 0.5, cell * 0.06, 0, Math.PI * 2);
         ctx.fill();
-
     } else if (skin === 'Samurai') {
         ctx.fillStyle = (i % 2 === 0) ? '#c81e2e' : '#f5f0e6';
         ctx.fillRect(px + m, py + m, tam, tam);
@@ -605,7 +806,6 @@ function desenharSegmento(px, py, cell, i, tamanho) {
         ctx.moveTo(px + m, py + cell * 0.5);
         ctx.lineTo(px + tam + m, py + cell * 0.5);
         ctx.stroke();
-
     } else if (skin === 'Runico') {
         ctx.fillStyle = '#2b2b33';
         ctx.fillRect(px + m, py + m, tam, tam);
@@ -625,7 +825,6 @@ function desenharSegmento(px, py, cell, i, tamanho) {
         ctx.closePath();
         ctx.stroke();
         ctx.shadowBlur = 0;
-
     } else if (skin === 'Titanio') {
         const grad = ctx.createLinearGradient(px, py, px + cell, py + cell);
         grad.addColorStop(0, '#3a4048');
@@ -636,7 +835,6 @@ function desenharSegmento(px, py, cell, i, tamanho) {
         ctx.strokeStyle = 'rgba(160, 190, 210, 0.6)';
         ctx.lineWidth = Math.max(1, cell * 0.04);
         ctx.strokeRect(px + m, py + m, tam, tam);
-
     } else if (skin === 'Plasma') {
         const pulso = Math.sin(Date.now() / 90 + i * 0.9) * 0.5 + 0.5;
         const cx = px + cell / 2, cy = py + cell / 2;
@@ -650,7 +848,6 @@ function desenharSegmento(px, py, cell, i, tamanho) {
         ctx.beginPath();
         ctx.arc(cx, cy, cell * 0.42, 0, Math.PI * 2);
         ctx.fill();
-
     } else if (skin === 'Obsidiana') {
         ctx.fillStyle = '#0a0a0d';
         ctx.fillRect(px + m, py + m, tam, tam);
@@ -664,15 +861,13 @@ function desenharSegmento(px, py, cell, i, tamanho) {
         ctx.lineTo(px + cell * 0.25, py + cell * 0.45);
         ctx.closePath();
         ctx.fill();
-
     } else if (skin === 'Quimera') {
         const cores = ['#ff5050', '#50ff90', '#5090ff', '#ffe050'];
         ctx.fillStyle = cores[(i + Math.floor(px + py)) % cores.length];
         ctx.fillRect(px + m, py + m, tam, tam);
         ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-        ctx.lineWidth = Math.max(1, cell * 0.04);    
+        ctx.lineWidth = Math.max(1, cell * 0.04);
         ctx.strokeRect(px + m, py + m, tam, tam);
-
     } else if (skin === 'Vazio') {
         ctx.fillStyle = '#000';
         ctx.fillRect(px + m, py + m, tam, tam);
@@ -682,7 +877,68 @@ function desenharSegmento(px, py, cell, i, tamanho) {
         ctx.beginPath();
         ctx.arc(px + cell / 2, py + cell / 2, cell * (0.15 + pulso * 0.15), 0, Math.PI * 2);
         ctx.stroke();
-
+    } else if (skin === 'Aco') {
+        /* Aço polido: gradiente frio de cinza-azulado com
+           reflexo diagonal que se move levemente ao longo
+           do corpo da cobra. */
+        const grad = ctx.createLinearGradient(px, py, px + cell, py + cell);
+        grad.addColorStop(0, '#5b6470');
+        grad.addColorStop(0.45, '#dfe6ee');
+        grad.addColorStop(0.55, '#aab4c0');
+        grad.addColorStop(1, '#2e3440');
+        ctx.fillStyle = grad;
+        ctx.fillRect(px + m, py + m, tam, tam);
+        ctx.strokeStyle = 'rgba(220, 235, 250, 0.55)';
+        ctx.lineWidth = Math.max(1, cell * 0.05);
+        ctx.strokeRect(px + m, py + m, tam, tam);
+        const brilhoX = ((i * 6 + Date.now() / 25) % (cell * 1.4)) - cell * 0.2;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.fillRect(px + brilhoX, py + m, cell * 0.10, tam);
+    } else if (skin === 'Bronze') {
+        /* Bronze antigo: tom quente, acobreado, com pátina
+           esverdeada sutil nas bordas simulando oxidação. */
+        const grad = ctx.createLinearGradient(px, py, px + cell, py + cell);
+        grad.addColorStop(0, '#8a5a2c');
+        grad.addColorStop(0.5, '#d9a05a');
+        grad.addColorStop(1, '#4a2f14');
+        ctx.fillStyle = grad;
+        ctx.fillRect(px + m, py + m, tam, tam);
+        ctx.strokeStyle = 'rgba(110, 160, 120, 0.45)';
+        ctx.lineWidth = Math.max(1, cell * 0.05);
+        ctx.strokeRect(px + m, py + m, tam, tam);
+        ctx.fillStyle = 'rgba(255, 220, 170, 0.3)';
+        ctx.fillRect(px + cell * 0.15, py + cell * 0.15, cell * 0.18, cell * 0.18);
+    } else if (skin === 'Cromada') {
+        /* Cromo: contraste extremo entre branco quase puro e
+           cinza-escuro, trocando de posição a cada frame para
+           parecer um espelho em movimento. */
+        const fase = Math.sin(Date.now() / 200 + i * 0.5) * 0.5 + 0.5;
+        const grad = ctx.createLinearGradient(px, py, px + cell, py + cell);
+        grad.addColorStop(0, '#1c1f24');
+        grad.addColorStop(Math.max(0.02, fase * 0.5), '#ffffff');
+        grad.addColorStop(Math.min(0.98, 0.5 + fase * 0.4), '#6b7280');
+        grad.addColorStop(1, '#0e1013');
+        ctx.fillStyle = grad;
+        ctx.fillRect(px + m, py + m, tam, tam);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.lineWidth = Math.max(1, cell * 0.04);
+        ctx.strokeRect(px + m, py + m, tam, tam);
+    } else if (skin === 'Mercurio') {
+        /* Mercúrio: líquido metálico com reflexo radial que
+           "escorre" suavemente, pulsando de brilho. */
+        const pulso = Math.sin(Date.now() / 140 + i * 0.6) * 0.5 + 0.5;
+        const cx = px + cell / 2, cy = py + cell / 2;
+        const grad = ctx.createRadialGradient(cx, cy, cell * 0.05, cx, cy, cell * 0.55);
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0.4, '#c3c9d1');
+        grad.addColorStop(0.75, `rgba(90, 96, 105, ${0.7 + pulso * 0.2})`);
+        grad.addColorStop(1, '#1f2226');
+        ctx.shadowBlur = cell * (0.25 + pulso * 0.25);
+        ctx.shadowColor = 'rgba(255, 255, 255, 0.6)';
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, cell * 0.42, 0, Math.PI * 2);
+        ctx.fill();
     } else if (skin === 'Lendario') {
         const matiz = (i * 20 + Date.now() / 10) % 360;
         ctx.shadowBlur = cell * 0.7;
@@ -692,7 +948,6 @@ function desenharSegmento(px, py, cell, i, tamanho) {
         ctx.strokeStyle = '#fff8d0';
         ctx.lineWidth = Math.max(1, cell * 0.05);
         ctx.strokeRect(px + m, py + m, tam, tam);
-
     } else {
         ctx.fillStyle = color;
         ctx.fillRect(px + m, py + m, tam, tam);
@@ -723,7 +978,6 @@ function resize() {
     cv.height = r.height * d;
     ctx.setTransform(d, 0, 0, d, 0, 0);
 }
-
 function getMapArea() {
     const r = cv.getBoundingClientRect();
     const menor = Math.min(r.width, r.height);
@@ -731,7 +985,6 @@ function getMapArea() {
     const cell = tamanho / mapSize;
     return { cell, size: tamanho, x: (r.width - tamanho) / 2, y: (r.height - tamanho) / 2 };
 }
-
 window.onresize = () => { resize(); draw(); };
 
 /* =========================================================
@@ -739,22 +992,18 @@ window.onresize = () => { resize(); draw(); };
 ========================================================= */
 function rnd() {
     const margem = 3;
-
     return {
         x: Math.floor(margem + Math.random() * (mapSize - margem * 2)),
         y: Math.floor(margem + Math.random() * (mapSize - margem * 2))
     };
 }
-
 function formatarTempo(segundos) {
     const s = Math.max(0, Math.floor(segundos || 0));
     const m = Math.floor(s / 60), r = s % 60;
     return m + ':' + String(r).padStart(2, '0');
 }
-
 function obsKey(x, y) { return x + ',' + y; }
 function isObstacle(p) { return obstacles.has(obsKey(p.x, p.y)); }
-
 function normalizarCelula(c) {
     if (mapMode !== 'SemParede') return c;
     let x = c.x, y = c.y;
@@ -767,7 +1016,6 @@ function normalizarCelula(c) {
 function celulasOcupadasPorSegmento(p) {
     const escala = escalaAtual();
     const base = [];
-
     for (let dx = 0; dx < escala; dx++) {
         for (let dy = 0; dy < escala; dy++) {
             base.push({
@@ -776,7 +1024,6 @@ function celulasOcupadasPorSegmento(p) {
             });
         }
     }
-
     return base.map(normalizarCelula);
 }
 function occupied(p) {
@@ -823,7 +1070,6 @@ function velocidadeAtual() {
    MODO CAOS
 ========================================================= */
 function agendarProximoEventoCaos() { proximoEventoCaos = gameTime + 15 + Math.random() * 10; }
-
 function dispararEventoCaos() {
     const eventos = ['velocidade', 'macaFugitiva', 'espelho'];
     const tipo = eventos[Math.floor(Math.random() * eventos.length)];
@@ -889,17 +1135,13 @@ function spawnRgb() {
 function reset() {
     mapSize = MAPA_INICIAL;
     const c = Math.floor(mapSize / 2), r = Math.floor(mapSize / 2);
-
     const escala = escalaAtual();
-
     s = [
         { x: c, y: r },
         { x: c - escala, y: r },
         { x: c - escala * 2, y: r }
     ];
-
     prevS = s.map(seg => ({ ...seg })); // evita "salto" visual no primeiro frame
-
     dir = 'RIGHT';
     next = 'RIGHT';
     grow = 0;
@@ -925,6 +1167,7 @@ function reset() {
     prepararModoMapa();
     preencherMacas();
 }
+
 /* =========================================================
    DIREÇÃO / TECLADO / GESTOS / D-PAD
 ========================================================= */
@@ -932,7 +1175,6 @@ function setDir(d) {
     const opposite = { UP: 'DOWN', DOWN: 'UP', LEFT: 'RIGHT', RIGHT: 'LEFT' };
     if (opposite[dir] !== d) next = d;
 }
-
 window.onkeydown = e => {
     const k = e.key.toLowerCase();
     if (k === 'arrowup' || k === 'w') setDir(direcaoAtiva('UP'));
@@ -944,37 +1186,28 @@ window.onkeydown = e => {
 
 let sx = 0, sy = 0;
 let swipeAtivo = false;
-
 cv.ontouchstart = e => {
     sx = e.touches[0].clientX;
     sy = e.touches[0].clientY;
     swipeAtivo = false;
 };
-
 cv.ontouchmove = e => {
     e.preventDefault();
-
     if (swipeAtivo) return;
-
     const x = e.touches[0].clientX - sx;
     const y = e.touches[0].clientY - sy;
-
     if (Math.max(Math.abs(x), Math.abs(y)) < 20) return;
-
     if (Math.abs(x) > Math.abs(y)) {
         setDir(direcaoAtiva(x > 0 ? 'RIGHT' : 'LEFT'));
     } else {
         setDir(direcaoAtiva(y > 0 ? 'DOWN' : 'UP'));
     }
-
     swipeAtivo = true;
 };
-
 cv.ontouchend = e => {
     e.preventDefault();
     swipeAtivo = false;
 };
-
 function configurarDpad() {
     const botoes = [
         { id: 'dpadUp', direcao: 'UP' },
@@ -982,20 +1215,16 @@ function configurarDpad() {
         { id: 'dpadLeft', direcao: 'LEFT' },
         { id: 'dpadRight', direcao: 'RIGHT' }
     ];
-
     botoes.forEach(b => {
         const btn = $(b.id);
         if (!btn) return;
-
         const acionar = e => {
             e.preventDefault();
             setDir(direcaoAtiva(b.direcao));
         };
-
         btn.addEventListener('pointerdown', acionar);
     });
 }
-
 configurarDpad();
 
 /* =========================================================
@@ -1015,12 +1244,9 @@ function shrinkMap() {
 ========================================================= */
 function move() {
     prevS = s.map(seg => ({ ...seg }));
-
     dir = next;
-
     const escala = escalaAtual();
     const h = { ...s[0] };
-
     if (dir === 'UP') h.y--;
     if (dir === 'DOWN') h.y++;
     if (dir === 'LEFT') h.x--;
@@ -1032,640 +1258,612 @@ function move() {
         if (h.y < 0) h.y = mapSize - 1;
         if (h.y >= mapSize) h.y = 0;
     } else {
-            const foraDosLimites =
-                celulasOcupadasPorSegmento(h).some(c =>
-                    c.x < 0 ||
-                    c.x >= mapSize ||
-                    c.y < 0 ||
-                    c.y >= mapSize
-                );
-
-            if (foraDosLimites) {
-                end();
-                return;
-            }
-        }
-
-        const celulasHead = celulasOcupadasPorSegmento(h);
-
-        const colidiuObstaculo = celulasHead.some(c => isObstacle(c));
-
-        /*
-        Na Colossal 2x2, quando ela anda uma célula,
-        a nova cabeça naturalmente ocupa parte do espaço
-        da cabeça anterior.
-
-        Por isso o primeiro segmento antigo é ignorado
-        na colisão. Para as outras partes da cobra,
-        a colisão continua normal.
-        */
-        const colidiuCorpo = s.some((p, i) => {
-    if (i === 0) return false;
-
-    // Na skin 2x2, ignora o segmento imediatamente atrás da cabeça
-            if (escala > 1 && i === 1) return false;
-
-            const celulasCorpo = celulasOcupadasPorSegmento(p);
-
-            return celulasCorpo.some(bc =>
-                celulasHead.some(hc =>
-                    hc.x === bc.x && hc.y === bc.y
-                )
+        const foraDosLimites =
+            celulasOcupadasPorSegmento(h).some(c =>
+                c.x < 0 ||
+                c.x >= mapSize ||
+                c.y < 0 ||
+                c.y >= mapSize
             );
-        });
-
-        if (colidiuObstaculo || colidiuCorpo) {
+        if (foraDosLimites) {
             end();
             return;
         }
+    }
 
-        s.unshift(h);
+    const celulasHead = celulasOcupadasPorSegmento(h);
+    const colidiuObstaculo = celulasHead.some(c => isObstacle(c));
 
-        const idxComida = foods.findIndex(f =>
-            celulasHead.some(c => c.x === f.x && c.y === f.y)
-        );
-
-        if (idxComida !== -1) {
-            score += D[diff][1] * MULTIPLICADOR_MACA;
-            grow += D[diff][1] * MULTIPLICADOR_MACA;
-
-            coinsThisRun += 2;
-
-            color = C[Math.floor(Math.random() * C.length)];
-
-            if (mapMode === 'Velocidade') {
-                velocidadeExtraApple =
-                    Math.min(velocidadeExtraApple + 0.3, 10);
-            }
-
-            foods.splice(idxComida, 1);
-            preencherMacas();
-
-            if (!rgbOn && score >= nextRgbScore) {
-                rgbOn = true;
-                spawnRgb();
-                nextRgbScore += 10;
-            }
-        }
-
-        if (
-            rgbOn &&
-            rgb &&
-            celulasHead.some(c =>
-                c.x === rgb.x && c.y === rgb.y
+    /*
+    Na Colossal 2x2, quando ela anda uma célula,
+    a nova cabeça naturalmente ocupa parte do espaço
+    da cabeça anterior.
+    Por isso o primeiro segmento antigo é ignorado
+    na colisão. Para as outras partes da cobra,
+    a colisão continua normal.
+    */
+    const colidiuCorpo = s.some((p, i) => {
+        if (i === 0) return false;
+        // Na skin 2x2, ignora o segmento imediatamente atrás da cabeça
+        if (escala > 1 && i === 1) return false;
+        const celulasCorpo = celulasOcupadasPorSegmento(p);
+        return celulasCorpo.some(bc =>
+            celulasHead.some(hc =>
+                hc.x === bc.x && hc.y === bc.y
             )
-        ) {
-            score += 5 * D[diff][1] * MULTIPLICADOR_MACA;
-            grow += 5 * D[diff][1] * MULTIPLICADOR_MACA;
+        );
+    });
 
-            coinsThisRun += 4;
+    if (colidiuObstaculo || colidiuCorpo) {
+        end();
+        return;
+    }
 
-            color = C[Math.floor(Math.random() * C.length)];
+    s.unshift(h);
 
-            rgbOn = false;
-            rgb = null;
-
-            if (foods.length) {
-                const idxRealoca =
-                    Math.floor(Math.random() * foods.length);
-
-                const novaPos = spawnUmaMaca();
-
-                if (novaPos) {
-                    foods[idxRealoca] = novaPos;
-                }
-            }
+    const idxComida = foods.findIndex(f =>
+        celulasHead.some(c => c.x === f.x && c.y === f.y)
+    );
+    if (idxComida !== -1) {
+        score += D[diff][1] * MULTIPLICADOR_MACA;
+        grow += D[diff][1] * MULTIPLICADOR_MACA;
+        coinsThisRun += 2;
+        color = C[Math.floor(Math.random() * C.length)];
+        if (mapMode === 'Velocidade') {
+            velocidadeExtraApple =
+                Math.min(velocidadeExtraApple + 0.3, 10);
         }
-
-        if (grow > 0) {
-            grow--;
-        } else {
-            s.pop();
+        foods.splice(idxComida, 1);
+        preencherMacas();
+        if (!rgbOn && score >= nextRgbScore) {
+            rgbOn = true;
+            spawnRgb();
+            nextRgbScore += 10;
         }
     }
 
-    /* =========================================================
-    DESENHAR
-    ========================================================= */
-    function draw() {
-        const r = cv.getBoundingClientRect();
-        const t = T[theme];
-        const area = getMapArea();
-        const cell = area.cell;
-
-        const intervaloAtual = 1000 / velocidadeAtual();
-        const tLerp = (paused || !run) ? 1 : Math.min(1, (performance.now() - lastMove) / intervaloAtual);
-
-        ctx.clearRect(0, 0, r.width, r.height);
-        ctx.fillStyle = col(t[0]);
-        ctx.fillRect(0, 0, r.width, r.height);
-
-        for (let y = 0; y < mapSize; y++) {
-            for (let x = 0; x < mapSize; x++) {
-                ctx.fillStyle = (x + y) % 2 ? col(t[2]) : col(t[1]);
-                ctx.fillRect(area.x + x * cell, area.y + y * cell, Math.ceil(cell) + 1, Math.ceil(cell) + 1);
+    if (
+        rgbOn &&
+        rgb &&
+        celulasHead.some(c =>
+            c.x === rgb.x && c.y === rgb.y
+        )
+    ) {
+        score += 5 * D[diff][1] * MULTIPLICADOR_MACA;
+        grow += 5 * D[diff][1] * MULTIPLICADOR_MACA;
+        coinsThisRun += 4;
+        color = C[Math.floor(Math.random() * C.length)];
+        rgbOn = false;
+        rgb = null;
+        if (foods.length) {
+            const idxRealoca =
+                Math.floor(Math.random() * foods.length);
+            const novaPos = spawnUmaMaca();
+            if (novaPos) {
+                foods[idxRealoca] = novaPos;
             }
         }
+    }
 
-        ctx.strokeStyle = col(t[3]);
-        ctx.lineWidth = Math.max(2, cell * 0.08);
-        ctx.strokeRect(area.x + 1, area.y + 1, area.size - 2, area.size - 2);
+    if (grow > 0) {
+        grow--;
+    } else {
+        s.pop();
+    }
+}
 
-        if (obstacles.size) {
-            ctx.fillStyle = 'rgba(90, 90, 100, 0.95)';
-            obstacles.forEach(key => {
-                const [ox, oy] = key.split(',').map(Number);
-                ctx.fillRect(area.x + ox * cell, area.y + oy * cell, Math.ceil(cell) + 1, Math.ceil(cell) + 1);
-            });
+/* =========================================================
+   DESENHAR
+========================================================= */
+function draw() {
+    const r = cv.getBoundingClientRect();
+    const t = T[theme];
+    const area = getMapArea();
+    const cell = area.cell;
+    const intervaloAtual = 1000 / velocidadeAtual();
+    const tLerp = (paused || !run) ? 1 : Math.min(1, (performance.now() - lastMove) / intervaloAtual);
+
+    ctx.clearRect(0, 0, r.width, r.height);
+    ctx.fillStyle = col(t[0]);
+    ctx.fillRect(0, 0, r.width, r.height);
+
+    for (let y = 0; y < mapSize; y++) {
+        for (let x = 0; x < mapSize; x++) {
+            ctx.fillStyle = (x + y) % 2 ? col(t[2]) : col(t[1]);
+            ctx.fillRect(area.x + x * cell, area.y + y * cell, Math.ceil(cell) + 1, Math.ceil(cell) + 1);
         }
+    }
 
-        foods.forEach(f => {
-            ctx.fillStyle = '#ff3c3c';
-            ctx.fillRect(area.x + f.x * cell + cell * 0.12, area.y + f.y * cell + cell * 0.12, cell * 0.76, cell * 0.76);
-        });
+    ctx.strokeStyle = col(t[3]);
+    ctx.lineWidth = Math.max(2, cell * 0.08);
+    ctx.strokeRect(area.x + 1, area.y + 1, area.size - 2, area.size - 2);
 
-        if (rgbOn && rgb) {
-            ctx.save();
-            const hue = (performance.now() / 6) % 360;
-            ctx.fillStyle = `hsl(${hue}, 90%, 60%)`;
-            ctx.shadowBlur = cell * 0.6;
-            ctx.shadowColor = ctx.fillStyle;
-            ctx.fillRect(area.x + rgb.x * cell + cell * 0.10, area.y + rgb.y * cell + cell * 0.10, cell * 0.80, cell * 0.80);
-            ctx.restore();
-        }
-
-        s.forEach((p, i) => {
-            const src = (i === 0) ? prevS[0] : prevS[i - 1];
-            let gx = p.x, gy = p.y;
-            if (src) {
-                let dx = p.x - src.x, dy = p.y - src.y;
-                if (dx > mapSize / 2) dx -= mapSize; else if (dx < -mapSize / 2) dx += mapSize;
-                if (dy > mapSize / 2) dy -= mapSize; else if (dy < -mapSize / 2) dy += mapSize;
-                gx = src.x + dx * tLerp;
-                gy = src.y + dy * tLerp;
-            }
-            const px = area.x + gx * cell;
-            const py = area.y + gy * cell;
-
-            ctx.save();
-            desenharSegmento(px, py, cell, i, s.length);
-            ctx.restore();
-
-            if (i === 0) {
-                ctx.fillStyle = '#111';
-                const olho = Math.max(2, cell * 0.13);
-                ctx.fillRect(px + cell * 0.25, py + cell * 0.25, olho, olho);
-                ctx.fillRect(px + cell * 0.65, py + cell * 0.25, olho, olho);
-            }
+    if (obstacles.size) {
+        ctx.fillStyle = 'rgba(90, 90, 100, 0.95)';
+        obstacles.forEach(key => {
+            const [ox, oy] = key.split(',').map(Number);
+            ctx.fillRect(area.x + ox * cell, area.y + oy * cell, Math.ceil(cell) + 1, Math.ceil(cell) + 1);
         });
     }
 
-    /* =========================================================
-    HUD
-    ========================================================= */
-    function hud() {
-        $('score').textContent = score;
+    foods.forEach(f => {
+        ctx.fillStyle = '#ff3c3c';
+        ctx.fillRect(area.x + f.x * cell + cell * 0.12, area.y + f.y * cell + cell * 0.12, cell * 0.76, cell * 0.76);
+    });
 
-        if (mapMode === 'Tempo') {
-            $('time').textContent = Math.max(0, Math.ceil(LIMITE_TEMPO_MODO - gameTime)) + 's';
-        } else {
-            $('time').textContent = Math.floor(gameTime) + 's';
+    if (rgbOn && rgb) {
+        ctx.save();
+        const hue = (performance.now() / 6) % 360;
+        ctx.fillStyle = `hsl(${hue}, 90%, 60%)`;
+        ctx.shadowBlur = cell * 0.6;
+        ctx.shadowColor = ctx.fillStyle;
+        ctx.fillRect(area.x + rgb.x * cell + cell * 0.10, area.y + rgb.y * cell + cell * 0.10, cell * 0.80, cell * 0.80);
+        ctx.restore();
+    }
+
+    s.forEach((p, i) => {
+        const src = (i === 0) ? prevS[0] : prevS[i - 1];
+        let gx = p.x, gy = p.y;
+        if (src) {
+            let dx = p.x - src.x, dy = p.y - src.y;
+            if (dx > mapSize / 2) dx -= mapSize; else if (dx < -mapSize / 2) dx += mapSize;
+            if (dy > mapSize / 2) dy -= mapSize; else if (dy < -mapSize / 2) dy += mapSize;
+            gx = src.x + dx * tLerp;
+            gy = src.y + dy * tLerp;
+        }
+        const px = area.x + gx * cell;
+        const py = area.y + gy * cell;
+        ctx.save();
+        desenharSegmento(px, py, cell, i, s.length);
+        ctx.restore();
+        if (i === 0) {
+            ctx.fillStyle = '#111';
+            const olho = Math.max(2, cell * 0.13);
+            ctx.fillRect(px + cell * 0.25, py + cell * 0.25, olho, olho);
+            ctx.fillRect(px + cell * 0.65, py + cell * 0.25, olho, olho);
+        }
+    });
+}
+
+/* =========================================================
+   HUD
+========================================================= */
+function hud() {
+    $('score').textContent = score;
+    if (mapMode === 'Tempo') {
+        $('time').textContent = Math.max(0, Math.ceil(LIMITE_TEMPO_MODO - gameTime)) + 's';
+    } else {
+        $('time').textContent = Math.floor(gameTime) + 's';
+    }
+    $('lvl').textContent = 'Nível ' + level;
+    if (mapMode === 'Caos' && gameTime < mensagemEventoAte) {
+        $('toastEvento').textContent = mensagemEvento;
+        $('toastEvento').classList.remove('hide');
+    } else {
+        $('toastEvento').classList.add('hide');
+    }
+    const label = document.querySelector('#wrap label');
+    if (label) label.textContent = `MAPA ${mapSize}×${mapSize} · ${MAPMODE_LABEL[mapMode]}`;
+}
+
+/* =========================================================
+   LOOP PRINCIPAL
+========================================================= */
+function loop(now) {
+    if (!run) return;
+    if (!paused) {
+        gameTime = (now - start - totalPaused) / 1000;
+        if (gameTime < 0) gameTime = 0;
+        const novoNivel = 1 + Math.floor(gameTime / 20);
+        if (novoNivel !== level) level = novoNivel;
+        if (mapMode === 'Tempo' && gameTime >= LIMITE_TEMPO_MODO) { end(); return; }
+        if (mapMode === 'Caos' && gameTime >= proximoEventoCaos) dispararEventoCaos();
+
+        const intervaloMovimento = 1000 / velocidadeAtual();
+        if (now - lastMove >= intervaloMovimento) {
+            lastMove += intervaloMovimento;
+            move();
         }
 
-        $('lvl').textContent = 'Nível ' + level;
-
-        if (mapMode === 'Caos' && gameTime < mensagemEventoAte) {
-            $('toastEvento').textContent = mensagemEvento;
-            $('toastEvento').classList.remove('hide');
-        } else {
-            $('toastEvento').classList.add('hide');
+        if (modoEncolheMapa()) {
+            const reducoes = Math.floor(gameTime / 60);
+            const tamanhoEsperado = Math.max(MAPA_MINIMO, MAPA_INICIAL - reducoes * 2);
+            if (tamanhoEsperado < mapSize) shrinkMap();
         }
 
-        const label = document.querySelector('#wrap label');
-        if (label) label.textContent = `MAPA ${mapSize}×${mapSize} · ${MAPMODE_LABEL[mapMode]}`;
-    }
-
-    /* =========================================================
-    LOOP PRINCIPAL
-    ========================================================= */
-    function loop(now) {
-        if (!run) return;
-
-        if (!paused) {
-            gameTime = (now - start - totalPaused) / 1000;
-            if (gameTime < 0) gameTime = 0;
-
-            const novoNivel = 1 + Math.floor(gameTime / 20);
-            if (novoNivel !== level) level = novoNivel;
-
-            if (mapMode === 'Tempo' && gameTime >= LIMITE_TEMPO_MODO) { end(); return; }
-            if (mapMode === 'Caos' && gameTime >= proximoEventoCaos) dispararEventoCaos();
-
-            const intervaloMovimento = 1000 / velocidadeAtual();
-
-            if (now - lastMove >= intervaloMovimento) {
-                lastMove += intervaloMovimento;
-                move();
-            }
-
-            if (modoEncolheMapa()) {
-                const reducoes = Math.floor(gameTime / 60);
-                const tamanhoEsperado = Math.max(MAPA_MINIMO, MAPA_INICIAL - reducoes * 2);
-                if (tamanhoEsperado < mapSize) shrinkMap();
-            }
-
-            hud();
-            draw();
-        }
-
-        requestAnimationFrame(loop);
-    }
-
-    /* =========================================================
-    NAVEGAÇÃO ENTRE TELAS
-    ========================================================= */
-    const TELAS = ['home', 'ranking', 'game', 'menuSkins'];
-    function showScreen(id) {
-        TELAS.forEach(s => $(s).classList.add('hide'));
-        $(id).classList.remove('hide');
-    }
-
-    function atualizarStatusJogador() {
-        if ($('homeCoins')) $('homeCoins').textContent = coins;
-        if ($('homeLevel')) $('homeLevel').textContent = playerLevel();
-    }
-
-    /* =========================================================
-    COMEÇAR / REINICIAR RODADA
-    ========================================================= */
-    function startRound() {
-        reset();
-        run = false;
-        paused = false;
-        showScreen('game');
-        resize();
+        hud();
         draw();
-        iniciarContagemRegressiva();
     }
+    requestAnimationFrame(loop);
+}
 
-    function begin() {
-        name = ($('name').value.trim().slice(0, 12)) || 'Jogador';
-        $('name').value = name;
-        localStorage.snakeName = name;
-        startRound();
-    }
+/* =========================================================
+   NAVEGAÇÃO ENTRE TELAS
+========================================================= */
+const TELAS = ['home', 'ranking', 'game', 'menuSkins'];
+function showScreen(id) {
+    TELAS.forEach(s => $(s).classList.add('hide'));
+    $(id).classList.remove('hide');
+}
+function atualizarStatusJogador() {
+    if ($('homeCoins')) $('homeCoins').textContent = coins;
+    if ($('homeLevel')) $('homeLevel').textContent = playerLevel();
+}
 
-    /* =========================================================
-    CONTAGEM REGRESSIVA (3, 2, 1)
-    ========================================================= */
-    function iniciarContagemRegressiva() {
-        let restante = 3;
-        const elContagem = $('contagem');
-        elContagem.textContent = restante;
-        elContagem.classList.remove('hide');
+/* =========================================================
+   COMEÇAR / REINICIAR RODADA
+========================================================= */
+function startRound() {
+    reset();
+    run = false;
+    paused = false;
+    showScreen('game');
+    resize();
+    draw();
+    iniciarContagemRegressiva();
+}
+function begin() {
+    name = ($('name').value.trim().slice(0, 12)) || 'Jogador';
+    $('name').value = name;
+    localStorage.snakeName = name;
+    startRound();
+}
 
-        const intervalo = setInterval(() => {
-            restante--;
-            if (restante > 0) { elContagem.textContent = restante; return; }
-
-            clearInterval(intervalo);
-            elContagem.classList.add('hide');
-
-            start = performance.now();
-            totalPaused = 0;
-            pausedAt = 0;
-
-            const now = performance.now();
-            lastMove = now;
-            prevS = s.map(seg => ({ ...seg }));
-
-            run = true;
-            paused = false;
-
-            requestAnimationFrame(loop);
-        }, 1000);
-    }
-
-    /* =========================================================
-    TELA DE FIM DE JOGO
-    ========================================================= */
-    function ensureOverlayInfo() {
-        let el = document.getElementById('overlayInfo');
-        if (!el) {
-            el = document.createElement('p');
-            el.id = 'overlayInfo';
-            el.style.opacity = '0.85';
-            el.style.margin = '-8px 0 18px';
-            el.style.fontSize = '14px';
-            document.querySelector('#overlay h2').insertAdjacentElement('afterend', el);
-        }
-        return el;
-    }
-
-    function showGameOverOverlay() {
-        document.querySelector('#overlay h2').textContent = '💀 GAME OVER';
-        ensureOverlayInfo().textContent = `${name}: ${score} pts · ${formatarTempo(gameTime)} · +${coinsThisRun} 🪙`;
-        $('cont').textContent = '🔁 JOGAR DE NOVO';
-        $('reset').classList.add('hide');
-        $('overlay').classList.remove('hide');
-    }
-
-    function resetOverlayParaPausa() {
-        document.querySelector('#overlay h2').textContent = 'PAUSADO';
-        const info = document.getElementById('overlayInfo');
-        if (info) info.remove();
-        $('cont').textContent = '▶ CONTINUAR';
-        $('reset').classList.remove('hide');
-    }
-
-    /* =========================================================
-    FIM DE JOGO
-    ========================================================= */
-    function end() {
-        if (!run) return;
-        run = false;
-
-        rank.push({ name, score, time: Math.floor(gameTime), modo: mapMode, diff });
-        rank.sort((a, b) => (b.score !== a.score) ? b.score - a.score : b.time - a.time);
-        rank = rank.slice(0, 50);
-        localStorage.snakeRank = JSON.stringify(rank);
-
-        coins += coinsThisRun;
-        totalXP += score;
-        localStorage.snakeCoins = coins;
-        localStorage.snakeXP = totalXP;
-
-        salvarRanking(name, score, Math.floor(gameTime), mapMode);
-
-        showGameOverOverlay();
-    }
-
-    /* =========================================================
-    HOME
-    ========================================================= */
-    function home() {
-        run = false;
+/* =========================================================
+   CONTAGEM REGRESSIVA (3, 2, 1)
+========================================================= */
+function iniciarContagemRegressiva() {
+    let restante = 3;
+    const elContagem = $('contagem');
+    elContagem.textContent = restante;
+    elContagem.classList.remove('hide');
+    const intervalo = setInterval(() => {
+        restante--;
+        if (restante > 0) { elContagem.textContent = restante; return; }
+        clearInterval(intervalo);
+        elContagem.classList.add('hide');
+        start = performance.now();
+        totalPaused = 0;
+        pausedAt = 0;
+        const now = performance.now();
+        lastMove = now;
+        prevS = s.map(seg => ({ ...seg }));
+        run = true;
         paused = false;
+        requestAnimationFrame(loop);
+    }, 1000);
+}
+
+/* =========================================================
+   TELA DE FIM DE JOGO
+========================================================= */
+function ensureOverlayInfo() {
+    let el = document.getElementById('overlayInfo');
+    if (!el) {
+        el = document.createElement('p');
+        el.id = 'overlayInfo';
+        el.style.opacity = '0.85';
+        el.style.margin = '-8px 0 18px';
+        el.style.fontSize = '14px';
+        document.querySelector('#overlay h2').insertAdjacentElement('afterend', el);
+    }
+    return el;
+}
+function showGameOverOverlay() {
+    document.querySelector('#overlay h2').textContent = '💀 GAME OVER';
+    ensureOverlayInfo().textContent = `${name}: ${score} pts · ${formatarTempo(gameTime)} · +${coinsThisRun} 🪙`;
+    $('cont').textContent = '🔁 JOGAR DE NOVO';
+    $('reset').classList.add('hide');
+    $('overlay').classList.remove('hide');
+}
+function resetOverlayParaPausa() {
+    document.querySelector('#overlay h2').textContent = 'PAUSADO';
+    const info = document.getElementById('overlayInfo');
+    if (info) info.remove();
+    $('cont').textContent = '▶ CONTINUAR';
+    $('reset').classList.remove('hide');
+}
+
+/* =========================================================
+   FIM DE JOGO
+========================================================= */
+function end() {
+    if (!run) return;
+    run = false;
+    rank.push({ name, score, time: Math.floor(gameTime), modo: mapMode, diff });
+    rank.sort((a, b) => (b.score !== a.score) ? b.score - a.score : b.time - a.time);
+    rank = rank.slice(0, 50);
+    localStorage.snakeRank = JSON.stringify(rank);
+    coins += coinsThisRun;
+    totalXP += score;
+    localStorage.snakeCoins = coins;
+    localStorage.snakeXP = totalXP;
+    salvarRanking(name, score, Math.floor(gameTime), mapMode);
+    salvarProgresso();
+    showGameOverOverlay();
+}
+
+/* =========================================================
+   HOME
+========================================================= */
+function home() {
+    run = false;
+    paused = false;
+    $('overlay').classList.add('hide');
+    resetOverlayParaPausa();
+    showScreen('home');
+    atualizarStatusJogador();
+}
+
+/* =========================================================
+   RANKING (global via Supabase, com fallback local)
+========================================================= */
+let rankModoSelecionado = null;
+function popularSeletorModoRanking() {
+    const select = $('rankModoSelect');
+    if (select.options.length === 0) {
+        MAPMODES.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m;
+            opt.textContent = MAPMODE_LABEL[m];
+            select.appendChild(opt);
+        });
+    }
+    if (!rankModoSelecionado) rankModoSelecionado = mapMode;
+    select.value = rankModoSelecionado;
+}
+function renderRankingLocal() {
+    const linhas = rank
+        .filter(r => !r.modo || r.modo === rankModoSelecionado)
+        .sort((a, b) => (b.score !== a.score) ? b.score - a.score : b.time - a.time)
+        .slice(0, 10);
+    if (!linhas.length) {
+        $('scores').innerHTML = `<div class="row"><span>Nenhuma partida neste modo ainda.</span><b>—</b></div>`;
+        return;
+    }
+    $('scores').innerHTML =
+        `<div class="row"><span>📴 Ranking local (sem conexão com o global)</span><b></b></div>` +
+        linhas.map((r, i) => {
+            const safeName = String(r.name || 'Jogador').replace(/[<>&]/g, '');
+            return `<div class="row rankRow"><span>${i + 1}. ${safeName}</span><b>${r.score} pts · ${formatarTempo(r.time)} · ${r.diff || ''}</b></div>`;
+        }).join('');
+}
+async function carregarEExibirRanking() {
+    $('scores').innerHTML = `<div class="row"><span>Carregando ranking...</span><b>...</b></div>`;
+    const rankingGlobal = await carregarRanking(rankModoSelecionado);
+    if (!rankingGlobal || !rankingGlobal.length) {
+        renderRankingLocal();
+        return;
+    }
+    $('scores').innerHTML = rankingGlobal.map((r, i) => {
+        const safeName = String(r.nome).replace(/[<>&]/g, '');
+        const dificuldade = String(r.dificuldade || 'Normal').replace(/[<>&]/g, '');
+        const tempoFormatado = formatarTempo(r.tempo);
+        return `<div class="row rankRow"><span>${i + 1}. ${safeName}</span><b>${r.pontuacao} pts · ${tempoFormatado} · ${dificuldade}</b></div>`;
+    }).join('');
+}
+async function showRank() {
+    showScreen('ranking');
+    popularSeletorModoRanking();
+    await carregarEExibirRanking();
+}
+$('rankModoSelect').onchange = () => {
+    rankModoSelecionado = $('rankModoSelect').value;
+    carregarEExibirRanking();
+};
+
+/* =========================================================
+   PAUSA
+========================================================= */
+function togglePause() {
+    if (!run) return;
+    if (!paused) {
+        paused = true;
+        pausedAt = performance.now();
+        resetOverlayParaPausa();
+        $('overlay').classList.remove('hide');
+        return;
+    }
+    const agora = performance.now();
+    totalPaused += agora - pausedAt;
+    paused = false;
+    lastMove = agora;
+    $('overlay').classList.add('hide');
+}
+
+/* =========================================================
+   BOTÕES
+========================================================= */
+$('play').onclick = begin;
+$('rank').onclick = showRank;
+$('back').onclick = home;
+$('menu').onclick = () => { if (run) togglePause(); else home(); };
+$('pause').onclick = togglePause;
+$('cont').onclick = () => {
+    if (!run) {
         $('overlay').classList.add('hide');
         resetOverlayParaPausa();
-        showScreen('home');
-        atualizarStatusJogador();
+        startRound();
+    } else {
+        togglePause();
     }
-
-    /* =========================================================
-    RANKING (global via Supabase, com fallback local)
-    ========================================================= */
-    let rankModoSelecionado = null;
-
-    function popularSeletorModoRanking() {
-        const select = $('rankModoSelect');
-        if (select.options.length === 0) {
-            MAPMODES.forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m;
-                opt.textContent = MAPMODE_LABEL[m];
-                select.appendChild(opt);
-            });
-        }
-        if (!rankModoSelecionado) rankModoSelecionado = mapMode;
-        select.value = rankModoSelecionado;
-    }
-
-    function renderRankingLocal() {
-        const linhas = rank
-            .filter(r => !r.modo || r.modo === rankModoSelecionado)
-            .sort((a, b) => (b.score !== a.score) ? b.score - a.score : b.time - a.time)
-            .slice(0, 10);
-
-        if (!linhas.length) {
-            $('scores').innerHTML = `<div class="row"><span>Nenhuma partida neste modo ainda.</span><b>—</b></div>`;
-            return;
-        }
-
-        $('scores').innerHTML =
-            `<div class="row"><span>📴 Ranking local (sem conexão com o global)</span><b></b></div>` +
-            linhas.map((r, i) => {
-                const safeName = String(r.name || 'Jogador').replace(/[<>&]/g, '');
-                return `<div class="row rankRow"><span>${i + 1}. ${safeName}</span><b>${r.score} pts · ${formatarTempo(r.time)} · ${r.diff || ''}</b></div>`;
-            }).join('');
-    }
-
-    async function carregarEExibirRanking() {
-        $('scores').innerHTML = `<div class="row"><span>Carregando ranking...</span><b>...</b></div>`;
-
-        const rankingGlobal = await carregarRanking(rankModoSelecionado);
-
-        if (!rankingGlobal || !rankingGlobal.length) {
-            renderRankingLocal();
-            return;
-        }
-
-        $('scores').innerHTML = rankingGlobal.map((r, i) => {
-            const safeName = String(r.nome).replace(/[<>&]/g, '');
-            const dificuldade = String(r.dificuldade || 'Normal').replace(/[<>&]/g, '');
-            const tempoFormatado = formatarTempo(r.tempo);
-            return `<div class="row rankRow"><span>${i + 1}. ${safeName}</span><b>${r.pontuacao} pts · ${tempoFormatado} · ${dificuldade}</b></div>`;
-        }).join('');
-    }
-
-    async function showRank() {
-        showScreen('ranking');
-        popularSeletorModoRanking();
-        await carregarEExibirRanking();
-    }
-
-    $('rankModoSelect').onchange = () => {
-        rankModoSelecionado = $('rankModoSelect').value;
-        carregarEExibirRanking();
-    };
-
-    /* =========================================================
-    PAUSA
-    ========================================================= */
-    function togglePause() {
-        if (!run) return;
-
-        if (!paused) {
-            paused = true;
-            pausedAt = performance.now();
-            resetOverlayParaPausa();
-            $('overlay').classList.remove('hide');
-            return;
-        }
-
-        const agora = performance.now();
-        totalPaused += agora - pausedAt;
-        paused = false;
-        lastMove = agora;
-        $('overlay').classList.add('hide');
-    }
-
-    /* =========================================================
-    BOTÕES
-    ========================================================= */
-    $('play').onclick = begin;
-    $('rank').onclick = showRank;
-    $('back').onclick = home;
-
-    $('menu').onclick = () => { if (run) togglePause(); else home(); };
-    $('pause').onclick = togglePause;
-
-    $('cont').onclick = () => {
-        if (!run) {
-            $('overlay').classList.add('hide');
-            resetOverlayParaPausa();
-            startRound();
-        } else {
-            togglePause();
-        }
-    };
-
-    $('reset').onclick = () => {
-        reset();
-        paused = false;
-        $('overlay').classList.add('hide');
-        lastMove = performance.now();
-    };
-
-    $('tomenu').onclick = home;
-
-    document.querySelectorAll('.voltarMenu').forEach(btn => { btn.onclick = home; });
-
-    /* =========================================================
-    NOME
-    ========================================================= */
-    $('name').oninput = e => { localStorage.snakeName = e.target.value; };
-
-    /* =========================================================
-    TEMA (inline na home — grade de swatches)
-    ========================================================= */
-    function renderTemas() {
-        const lista = Object.keys(T);
-        $('listaTemas').innerHTML = lista.map(t => {
-            const cores = T[t];
-            const ativo = (t === theme);
-            const corPrincipal = col(cores[1]), corSecundaria = col(cores[2]);
-            return `
-                <div class="temaSwatch ${ativo ? 'ativa' : ''}" data-tema="${t}" style="background: linear-gradient(135deg, ${corPrincipal}, ${corSecundaria});">
-                    <span>${t}</span>
-                </div>`;
-        }).join('');
-
-        $('listaTemas').querySelectorAll('[data-tema]').forEach(el => {
-            el.onclick = () => {
-                theme = el.dataset.tema;
-                localStorage.snakeTheme = theme;
-                apply();
-                renderTemas();
-            };
-        });
-    }
-
-    /* =========================================================
-    DIFICULDADE (inline na home)
-    ========================================================= */
-    function renderDificuldades() {
-        const lista = Object.keys(D);
-        $('listaDificuldades').innerHTML = lista.map(d => {
-            const ativo = (d === diff) ? 'ativo' : '';
-            return `<button class="opcaoLista ${ativo}" data-diff="${d}">${d}</button>`;
-        }).join('');
-
-        $('listaDificuldades').querySelectorAll('[data-diff]').forEach(btn => {
-            btn.onclick = () => {
-                diff = btn.dataset.diff;
-                localStorage.snakeDiff = diff;
-                apply();
-                renderDificuldades();
-            };
-        });
-    }
-
-    /* =========================================================
-    MODO DE MAPA (inline na home)
-    ========================================================= */
-    function renderModos() {
-        $('listaModos').innerHTML = MAPMODES.map(m => {
-            const ativo = (m === mapMode) ? 'ativo' : '';
-            return `<button class="opcaoLista ${ativo}" data-modo="${m}">${MAPMODE_LABEL[m]}</button>`;
-        }).join('');
-
-        $('listaModos').querySelectorAll('[data-modo]').forEach(btn => {
-            btn.onclick = () => {
-                mapMode = btn.dataset.modo;
-                localStorage.snakeMapMode = mapMode;
-                apply();
-                renderModos();
-            };
-        });
-    }
-
-    /* =========================================================
-    MENU: SKINS
-    ========================================================= */
-    function renderSkins() {
-        $('skinsCoins').textContent = coins;
-        $('skinsLevel').textContent = playerLevel();
-
-        $('listaSkins').innerHTML = SKINS.map(nomeSkin => {
-            const info = SKIN_INFO[nomeSkin];
-            const desbloqueada = skinDesbloqueada(nomeSkin);
-            const ativa = (nomeSkin === skin);
-            let acaoHtml;
-
-            if (ativa) {
-                acaoHtml = `<span class="tagSelecionada">SELECIONADA</span>`;
-            } else if (desbloqueada) {
-                acaoHtml = `<button class="botaoSelecionar" data-selecionar="${nomeSkin}">Selecionar</button>`;
-            } else {
-                const podeComprar = coins >= info.custo;
-                acaoHtml = `
-                    <span class="infoBloqueio">Nível ${info.nivel} ou</span>
-                    <button class="botaoComprar" data-comprar="${nomeSkin}" ${podeComprar ? '' : 'disabled'}>🪙 ${info.custo}</button>`;
-            }
-
-            return `
-                <div class="linhaSkin ${ativa ? 'ativa' : ''}">
-                    <div class="previaSkin previa-${nomeSkin}"></div>
-                    <div class="infoSkin"><b>${info.nome}</b></div>
-                    <div class="acaoSkin">${acaoHtml}</div>
-                </div>`;
-        }).join('');
-
-        $('listaSkins').querySelectorAll('[data-selecionar]').forEach(btn => {
-            btn.onclick = () => {
-                skin = btn.dataset.selecionar;
-                localStorage.snakeSkin = skin;
-                apply();
-                renderSkins();
-            };
-        });
-
-        $('listaSkins').querySelectorAll('[data-comprar]').forEach(btn => {
-            btn.onclick = () => {
-                const nomeSkin = btn.dataset.comprar;
-                const info = SKIN_INFO[nomeSkin];
-                if (coins < info.custo) return;
-                coins -= info.custo;
-                ownedSkins.add(nomeSkin);
-                localStorage.snakeCoins = coins;
-                localStorage.snakeOwnedSkins = JSON.stringify([...ownedSkins]);
-                skin = nomeSkin;
-                localStorage.snakeSkin = skin;
-                apply();
-                renderSkins();
-            };
-        });
-    }
-    $('openSkins').onclick = () => { renderSkins(); showScreen('menuSkins'); };
-
-    /* =========================================================
-    INICIALIZAÇÃO
-    ========================================================= */
-    resize();
+};
+$('reset').onclick = () => {
     reset();
-    draw();
-    atualizarStatusJogador();
-    renderTemas();
-    renderDificuldades();
-    renderModos();
+    paused = false;
+    $('overlay').classList.add('hide');
+    lastMove = performance.now();
+};
+$('tomenu').onclick = home;
+document.querySelectorAll('.voltarMenu').forEach(btn => { btn.onclick = home; });
+
+/* =========================================================
+   LOGIN — BOTÕES
+========================================================= */
+const botaoAbrirLogin = document.getElementById('openLogin');
+if (botaoAbrirLogin) {
+    botaoAbrirLogin.onclick = () => $('modalLogin').classList.remove('hide');
+}
+$('fecharLogin').onclick = () => {
+    $('modalLogin').classList.add('hide');
+    const msg = $('loginMensagem');
+    if (msg) msg.classList.add('hide');
+};
+$('btnGoogle').onclick = () => entrarComProvider('google');
+$('btnFacebook').onclick = () => entrarComProvider('facebook');
+$('btnEmail').onclick = entrarComEmail;
+$('btnLogout').onclick = sair;
+
+/* =========================================================
+   NOME
+========================================================= */
+$('name').oninput = e => {
+    localStorage.snakeName = e.target.value;
+    nickAlterado();
+    atualizarUIAuth();
+};
+
+/* =========================================================
+   TEMA (inline na home — grade de swatches)
+========================================================= */
+function renderTemas() {
+    const lista = Object.keys(T);
+    $('listaTemas').innerHTML = lista.map(t => {
+        const cores = T[t];
+        const ativo = (t === theme);
+        const corPrincipal = col(cores[1]), corSecundaria = col(cores[2]);
+        return `
+            <div class="temaSwatch ${ativo ? 'ativa' : ''}" data-tema="${t}" style="background: linear-gradient(135deg, ${corPrincipal}, ${corSecundaria});">
+                <span>${t}</span>
+            </div>`;
+    }).join('');
+    $('listaTemas').querySelectorAll('[data-tema]').forEach(el => {
+        el.onclick = () => {
+            theme = el.dataset.tema;
+            localStorage.snakeTheme = theme;
+            apply();
+            renderTemas();
+            salvarProgresso();
+        };
+    });
+}
+
+/* =========================================================
+   DIFICULDADE (inline na home)
+========================================================= */
+function renderDificuldades() {
+    const lista = Object.keys(D);
+    $('listaDificuldades').innerHTML = lista.map(d => {
+        const ativo = (d === diff) ? 'ativo' : '';
+        return `<button class="opcaoLista ${ativo}" data-diff="${d}">${d}</button>`;
+    }).join('');
+    $('listaDificuldades').querySelectorAll('[data-diff]').forEach(btn => {
+        btn.onclick = () => {
+            diff = btn.dataset.diff;
+            localStorage.snakeDiff = diff;
+            apply();
+            renderDificuldades();
+            salvarProgresso();
+        };
+    });
+}
+
+/* =========================================================
+   MODO DE MAPA (inline na home)
+========================================================= */
+function renderModos() {
+    $('listaModos').innerHTML = MAPMODES.map(m => {
+        const ativo = (m === mapMode) ? 'ativo' : '';
+        return `<button class="opcaoLista ${ativo}" data-modo="${m}">${MAPMODE_LABEL[m]}</button>`;
+    }).join('');
+    $('listaModos').querySelectorAll('[data-modo]').forEach(btn => {
+        btn.onclick = () => {
+            mapMode = btn.dataset.modo;
+            localStorage.snakeMapMode = mapMode;
+            apply();
+            renderModos();
+            salvarProgresso();
+        };
+    });
+}
+
+/* =========================================================
+   MENU: SKINS
+========================================================= */
+function renderSkins() {
+    $('skinsCoins').textContent = coins;
+    $('skinsLevel').textContent = playerLevel();
+    $('listaSkins').innerHTML = SKINS.map(nomeSkin => {
+        const info = SKIN_INFO[nomeSkin];
+        const desbloqueada = skinDesbloqueada(nomeSkin);
+        const ativa = (nomeSkin === skin);
+        let acaoHtml;
+        if (ativa) {
+            acaoHtml = `<span class="tagSelecionada">SELECIONADA</span>`;
+        } else if (desbloqueada) {
+            acaoHtml = `<button class="botaoSelecionar" data-selecionar="${nomeSkin}">Selecionar</button>`;
+        } else {
+            const podeComprar = coins >= info.custo;
+            acaoHtml = `
+                <span class="infoBloqueio">Nível ${info.nivel} ou</span>
+                <button class="botaoComprar" data-comprar="${nomeSkin}" ${podeComprar ? '' : 'disabled'}>🪙 ${info.custo}</button>`;
+        }
+        return `
+            <div class="linhaSkin ${ativa ? 'ativa' : ''}">
+                <div class="previaSkin previa-${nomeSkin}"></div>
+                <div class="infoSkin"><b>${info.nome}</b></div>
+                <div class="acaoSkin">${acaoHtml}</div>
+            </div>`;
+    }).join('');
+    $('listaSkins').querySelectorAll('[data-selecionar]').forEach(btn => {
+        btn.onclick = () => {
+            skin = btn.dataset.selecionar;
+            localStorage.snakeSkin = skin;
+            apply();
+            renderSkins();
+            salvarProgresso();
+        };
+    });
+    $('listaSkins').querySelectorAll('[data-comprar]').forEach(btn => {
+        btn.onclick = () => {
+            const nomeSkin = btn.dataset.comprar;
+            const info = SKIN_INFO[nomeSkin];
+            if (coins < info.custo) return;
+            coins -= info.custo;
+            ownedSkins.add(nomeSkin);
+            localStorage.snakeCoins = coins;
+            localStorage.snakeOwnedSkins = JSON.stringify([...ownedSkins]);
+            skin = nomeSkin;
+            localStorage.snakeSkin = skin;
+            apply();
+            renderSkins();
+            salvarProgresso();
+        };
+    });
+}
+$('openSkins').onclick = () => { renderSkins(); showScreen('menuSkins'); };
+
+/* =========================================================
+   INICIALIZAÇÃO
+========================================================= */
+resize();
+reset();
+draw();
+atualizarStatusJogador();
+renderTemas();
+renderDificuldades();
+renderModos();
+if (sb) {
+    sb.auth.getSession().then(({ data }) => {
+        usuarioLogado = (data && data.session && data.session.user) || null;
+        atualizarUIAuth();
+        if (usuarioLogado) sincronizarProgresso();
+    }).catch(() => atualizarUIAuth());
+    sb.auth.onAuthStateChange((_evento, sessao) => {
+        usuarioLogado = (sessao && sessao.user) || null;
+        atualizarUIAuth();
+        if (usuarioLogado) sincronizarProgresso();
+    });
+} else {
+    atualizarUIAuth();
+}
