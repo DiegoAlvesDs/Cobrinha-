@@ -49,7 +49,12 @@ function atualizarUIAuth() {
         if (avatar) avatar.textContent = nick.charAt(0);
         if (rotulo) rotulo.textContent = nick;
         const inputNome = document.getElementById('name');
-        if (inputNome && !inputNome.value.trim()) inputNome.value = nick;
+        if (inputNome) {
+            if (!inputNome.value.trim()) inputNome.value = nick;
+            // Nick escolhido uma vez: com conta definida, o campo trava
+            inputNome.disabled = !!nickDaConta;
+            inputNome.placeholder = nickDaConta ? 'Nick fixo da conta' : 'Escolha seu nick (só uma vez!)';
+        }
         const provedor = (usuarioLogado.app_metadata && usuarioLogado.app_metadata.provider) || 'email';
         const nomeProvedor = provedor === 'google' ? 'Google'
             : provedor === 'facebook' ? 'Facebook'
@@ -105,6 +110,11 @@ async function sair() {
     usuarioLogado = null;
     ultimoSyncProgresso = 0;
     nickDaConta = null;
+    const inputNome = document.getElementById('name');
+    if (inputNome) {
+        inputNome.disabled = false;
+        inputNome.placeholder = 'Nome do jogador';
+    }
     atualizarUIAuth();
 }
 
