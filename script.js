@@ -196,7 +196,7 @@ function aplicarProgresso(p) {
 }
 
 async function salvarProgresso() {
-    if (!sb || !usuarioLogado) return;
+    if (!sb || !usuarioLogado || !nickDaConta) return;
     try {
         const token = await tokenAuth();
         if (!token) return;
@@ -235,8 +235,9 @@ async function sincronizarProgresso() {
         if (lista && lista.length) {
             aplicarProgresso(lista[0]);
             atualizarUIAuth();
+            if (!nickDaConta) mostrarEscolhaNick();
         } else {
-            await salvarProgresso();
+            mostrarEscolhaNick();
         }
     } catch (erro) {
         console.error('Erro de conexão ao sincronizar progresso:', erro);
@@ -250,6 +251,47 @@ function nickAlterado() {
     if (novoNick) nickDaConta = novoNick;
     clearTimeout(timerNick);
     timerNick = setTimeout(salvarProgresso, 1200);
+}
+
+/* =========================================================
+   ESCOLHA DE NICK (uma vez só)
+========================================================= */
+function mostrarEscolhaNick() {
+    const modal = document.getElementById('modalNick');
+    if (!modal || nickDaConta) return;
+    const input = document.getElementById('nickEscolha');
+    if (input && !input.value.trim()) {
+        input.value = (localStorage.snakeName || '').trim().slice(0, 12);
+    }
+    modal.classList.remove('hide');
+}
+
+function esconderEscolhaNick() {
+    const modal = document.getElementById('modalNick');
+    if (modal) modal.classList.add('hide');
+}
+
+async function confirmarNick() {
+    const input = document.getElementById('nickEscolha');
+    const nick = ((input && input.value) || '').trim().slice(0, 12);
+    if (!nick) {
+        if (input) {
+            input.placeholder = 'Digite um nick!';
+            input.focus();
+        }
+        return;
+    }
+    nickDaConta = nick;
+    localStorage.snakeName = nick;
+    const inputNome = document.getElementById('name');
+    if (inputNome) {
+        inputNome.value = nick;
+        inputNome.disabled = true;
+        inputNome.placeholder = 'Nick fixo da conta';
+    }
+    esconderEscolhaNick();
+    await salvarProgresso();
+    atualizarUIAuth();
 }
 
 async function salvarRanking(nome, pontuacao, tempo, modo) {
@@ -1740,6 +1782,14 @@ ligarBotao('btnGoogle', () => entrarComProvider('google'));
 ligarBotao('btnFacebook', () => entrarComProvider('facebook'));
 ligarBotao('btnEmail', entrarComEmail);
 ligarBotao('btnLogout', sair);
+ligarBotao('btnConfirmarNick', confirmarNick);
+ligarBotao('pularNick', esconderEscolhaNick);
+const inputNickEscolha = document.getElementById('nickEscolha');
+if (inputNickEscolha) {
+    inputNickEscolha.addEventListener('keydown', e => {
+        if (e.key === 'Enter') confirmarNick();
+    });
+}
 
 /* =========================================================
    NOME
