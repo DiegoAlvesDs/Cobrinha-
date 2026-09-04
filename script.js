@@ -385,10 +385,10 @@ const C = ['#00ff00', '#0096ff', '#ff00ff', '#ffff00', '#ff7800', '#ff0000', '#0
 /* =========================================================
    MODOS DE MAPA
 ========================================================= */
-const MAPMODES = ['Classico', 'SemParede', 'Infinito', 'Velocidade', 'Tempo', 'Obstaculos', 'Caos', 'Espelho'];
+const MAPMODES = ['Classico', 'SemParede', 'Infinito', 'Velocidade', 'Tempo', 'Obstaculos', 'Caos', 'Espelho', 'Gigante'];
 const MAPMODE_LABEL = {
     Classico: 'Clássico', SemParede: 'Sem Parede', Infinito: 'Infinito', Velocidade: 'Velocidade',
-    Tempo: 'Tempo', Obstaculos: 'Obstáculos', Caos: 'Caos', Espelho: 'Espelho'
+    Tempo: 'Tempo', Obstaculos: 'Obstáculos', Caos: 'Caos', Espelho: 'Espelho', Gigante: 'Gigante 2x'
 };
 const LIMITE_TEMPO_MODO = 60;
 
@@ -428,7 +428,6 @@ const SKIN_INFO = {
     Realeza:   { nome: 'Realeza', custo: 600, nivel: 23 },
     Marinha:   { nome: 'Marinha', custo: 650, nivel: 24 },
     Celestial: { nome: 'Celestial', custo: 700, nivel: 25 },
-    Colossal:  { nome: 'Colossal (2x2)', custo: 1000, nivel: 30 },
     Fenix:     { nome: 'Fênix', custo: 1200, nivel: 32 },
     Dragao:    { nome: 'Dragão Ancestral', custo: 1500, nivel: 35 },
     Cavaleiro: { nome: 'Cavaleiro Medieval', custo: 2000, nivel: 36 },
@@ -449,15 +448,13 @@ const SKIN_INFO = {
 const SKINS = Object.keys(SKIN_INFO);
 
 /* =========================================================
-   ESCALA DAS SKINS (quantas células de largura/altura cada
+   ESCALA DA COBRA (quantas células de largura/altura cada
    segmento ocupa — sempre um quadrado NxN, física e visual
-   batendo). 1 = padrão (a maioria das skins).
+   batendo). 1 = padrão. No modo de mapa "Gigante" a cobra
+   é 2x com QUALQUER skin equipada.
 ========================================================= */
-const SKIN_ESCALA = {
-    Colossal: 2,
-};
 function escalaAtual() {
-    return SKIN_ESCALA[skin] || 1;
+    return (mapMode === 'Gigante') ? 2 : 1;
 }
 
 /* =========================================================
@@ -477,7 +474,7 @@ let rank = JSON.parse(localStorage.snakeRank || '[]');
 let name = localStorage.snakeName || '';
 let mapMode = localStorage.snakeMapMode || 'Classico';
 let skin = localStorage.snakeSkin || 'Solida';
-if (skin === 'Cogumelo') {
+if (skin === 'Cogumelo' || skin === 'Colossal') {
     skin = 'Solida';
     localStorage.snakeSkin = skin;
 }
@@ -768,17 +765,6 @@ function desenharSegmento(px, py, cell, i, tamanho) {
             ctx.fillStyle = '#bcd8ff';
             ctx.fillRect(ex, ey, Math.max(1, cell * 0.08), Math.max(1, cell * 0.08));
         }
-    } else if (skin === 'Colossal') {
-        /* Ocupa fisicamente um bloco 2x2 (célula
-           atual + as 3 vizinhas: direita, baixo e
-           diagonal) — o desenho é um quadrado do
-           mesmo tamanho da hitbox real. */
-        const tamanhoQuadrado = (cell * 2) - (m * 2);
-        ctx.fillStyle = color;
-        ctx.fillRect(px + m, py + m, tamanhoQuadrado, tamanhoQuadrado);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.lineWidth = Math.max(1, cell * 0.05);
-        ctx.strokeRect(px + m, py + m, tamanhoQuadrado, tamanhoQuadrado);
     } else if (skin === 'Fenix') {
         const pulso = Math.sin(Date.now() / 100 + i * 0.5) * 0.5 + 0.5;
         const cx = px + cell / 2, cy = py + cell / 2;
@@ -1343,7 +1329,7 @@ function move() {
     const colidiuObstaculo = celulasHead.some(c => isObstacle(c));
 
     /*
-    Na Colossal 2x2, quando ela anda uma célula,
+    No modo Gigante (2x), quando a cobra anda uma célula,
     a nova cabeça naturalmente ocupa parte do espaço
     da cabeça anterior.
     Por isso o primeiro segmento antigo é ignorado
@@ -1352,7 +1338,7 @@ function move() {
     */
     const colidiuCorpo = s.some((p, i) => {
         if (i === 0) return false;
-        // Na skin 2x2, ignora o segmento imediatamente atrás da cabeça
+        // Na cobra 2x, ignora o segmento imediatamente atrás da cabeça
         if (escala > 1 && i === 1) return false;
         const celulasCorpo = celulasOcupadasPorSegmento(p);
         return celulasCorpo.some(bc =>
@@ -1481,14 +1467,18 @@ function draw() {
         }
         const px = area.x + gx * cell;
         const py = area.y + gy * cell;
+        /* No modo Gigante (escala 2x), o desenho da skin é
+           ampliado para preencher o bloco 2x2 da hitbox —
+           vale para qualquer skin. */
+        const celulaDesenho = cell * escalaAtual();
         ctx.save();
-        desenharSegmento(px, py, cell, i, s.length);
+        desenharSegmento(px, py, celulaDesenho, i, s.length);
         ctx.restore();
         if (i === 0) {
             ctx.fillStyle = '#111';
-            const olho = Math.max(2, cell * 0.13);
-            ctx.fillRect(px + cell * 0.25, py + cell * 0.25, olho, olho);
-            ctx.fillRect(px + cell * 0.65, py + cell * 0.25, olho, olho);
+            const olho = Math.max(2, celulaDesenho * 0.13);
+            ctx.fillRect(px + celulaDesenho * 0.25, py + celulaDesenho * 0.25, olho, olho);
+            ctx.fillRect(px + celulaDesenho * 0.65, py + celulaDesenho * 0.25, olho, olho);
         }
     });
 }
