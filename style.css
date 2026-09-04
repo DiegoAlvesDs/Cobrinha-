@@ -516,7 +516,6 @@ header button{
 .previa-Realeza{ background: linear-gradient(135deg, #3a0a5c, #7a2fc0, #ffd75a); }
 .previa-Marinha{ background: linear-gradient(135deg, #00285a, #0082b4); }
 .previa-Celestial{ background: radial-gradient(circle at 30% 30%, #fff 0 2px, transparent 3px), radial-gradient(circle at 70% 60%, #fff 0 2px, transparent 3px), #0a1030; }
-.previa-Colossal{ background: #00c060; box-shadow: 0 0 0 5px rgba(255, 255, 255, .35); }
 .previa-Fenix{ background: radial-gradient(circle at 50% 50%, #fff6d0, #ffb020 40%, #ff5500 75%, #a01400); box-shadow: 0 0 14px 3px #ff6a00; }
 .previa-Dragao{ background: linear-gradient(135deg, #0a2e1a, #1c5c34, #0a2e1a); box-shadow: 0 0 0 2px rgba(255, 215, 90, .5) inset; }
 .previa-Cavaleiro{ background: linear-gradient(135deg, #9aa0ac, #d4d9e2, #5c616c); box-shadow: 0 0 0 2px rgba(179, 18, 28, .5) inset; }
