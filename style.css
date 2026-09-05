@@ -925,9 +925,14 @@ header > b{
     transition: background .15s ease, transform .1s ease;
 }
 /* No PC esses botões não precisam: notas e prévia já
-   aparecem sozinhas. Ficam disponíveis só no celular. */
+   aparecem sozinhas. Ficam disponíveis só no celular.
+   (Regra dupla: por largura de tela E por plataforma
+   detectada no JS.) */
 @media (min-width: 900px){
     .btnNotas{ display: none; }
+}
+body.plataforma-pc .btnNotas{
+    display: none !important;
 }
 .btnNotas:hover{
     background: color-mix(in srgb, var(--border) 18%, transparent);
