@@ -9,7 +9,7 @@
     <title>Cobrinha Infinita PRO</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=8">
+    <link rel="stylesheet" href="style.css?v=20">
 </head>
 <body>
     <div class="app">
@@ -46,6 +46,12 @@
                 <button id="openSkins">💎 Skins</button>
                 <button id="rank">🏆 Ranking</button>
             </div>
+            <button id="abrirNotas" class="btnNotas">📋 Novidades da versão</button>
+            <!-- ONLINE arquivado por enquanto: basta remover
+                 o comentário abaixo para reativar o botão -->
+            <!--
+            <button id="openOnline" class="btnOnlineHome">🌐 ONLINE · Arena</button>
+            -->
             <div class="optionGroup">
                 <label>Tema</label>
                 <div id="listaTemas" class="temaGrid"></div>
@@ -59,10 +65,40 @@
                 <div id="listaModos" class="listaOpcoes pillGridInline"></div>
             </div>
             <button id="play">▶ PLAY</button>
-            <small>
+            <small id="dicaControles">
                 Deslize ou use as setas para controlar a cobra
             </small>
         </section>
+
+        <!-- NOTAS DE ATUALIZAÇÃO (lado esquerdo, PC) -->
+        <aside id="notasAtualizacao">
+            <button id="fecharNotas" class="btnFecharNotas" title="Fechar">✕</button>
+            <h3>📋 ATUALIZAÇÕES</h3>
+            <div class="notaItem">
+                <b>🌌 Tema novo: Cosmos</b>
+                <p>Saiu o Outono, entrou o Cosmos: céu de espaço profundo com buraco negro girando, 70 estrelas, galáxias espirais, constelações que se acendem, estrela cadente, cometa, nebulosas respirando e planeta com anéis e luas. Tudo animado atrás da partida!</p>
+            </div>
+            <div class="notaItem">
+                <b>🍎 Maçã e mapa caprichados</b>
+                <p>A maçã virou uma fruta de verdade: brilhante, com reflexo, cabinho e folha — e pulsa. O mapa ganhou borda com brilho e obstáculos 3D no modo Obstáculos.</p>
+            </div>
+            <div class="notaItem">
+                <b>🎮 Controles adaptados por plataforma</b>
+                <p>O jogo agora detecta se você está no PC ou no celular. No PC as setas somem (joga com WASD/setas e ESC pausa); no celular o D-pad ficou maior e agora o celular <b>vibra quando a cobra morre</b>.</p>
+            </div>
+            <div class="notaItem">
+                <b>🐍 Prévia de skins viciante</b>
+                <p>Cada skin mostra uma <b>simulação de verdade</b> ao lado do menu: uma cobrinha IA andando, caçando a maçã e crescendo com a skin escolhida. Passe o mouse numa skin da lista para testar na hora!</p>
+            </div>
+            <div class="notaItem">
+                <b>✨ 20 skins refeitas e animadas</b>
+                <p>Samurai Carmesim, Cavaleiro Medieval, Realeza, Dragão Ancestral, Dourada, Fogo, Espinhosa, Vulcão, Circuito Neon, Plasma, Rúnico, Estelar, Celestial, Aurora, Sombria, Elétrica, Obsidiana, Pixel Art, Abóbora Maldita e Natalina — todas com efeitos novos: brilhos, faíscas, relâmpagos, neve e mais.</p>
+            </div>
+            <div class="notaItem">
+                <b>🖥️ Mais espaço na partida</b>
+                <p>A barra de cima agora some durante o jogo e volta no menu — tela mais limpa sem mudar o tamanho do mapa.</p>
+            </div>
+        </aside>
 
         <!-- MENU: SKINS -->
         <section id="menuSkins" class="screen hide">
@@ -72,10 +108,14 @@
                 <span>⭐ Nível <b id="skinsLevel">1</b></span>
             </div>
             <div id="listaSkins" class="listaSkinsContainer"></div>
+            <div id="previaGrande">
+                <canvas id="previaGrandeCanvas" width="400" height="600"></canvas>
+                <b id="previaGrandeNome"></b>
+                <span id="previaGrandeStatus"></span>
+            </div>
+            <button id="alternarPrevia" class="btnNotas">👁 Mostrar prévia</button>
             <button class="voltarMenu">← VOLTAR</button>
         </section>
-
-        <!-- RANKING -->
         <section id="ranking" class="screen hide">
             <h2>🏆 RANKING</h2>
             <select id="rankModoSelect" class="seletorModo"></select>
@@ -166,8 +206,38 @@
             <button id="pularNick" class="btnFecharNick">Escolher depois</button>
         </div>
     </div>
+    <div id="modalOnline" class="hide">
+        <div>
+            <h2>🌐 ARENA ONLINE</h2>
+            <p class="loginSub">Estilo slither.io: todos jogam no MESMO mapa gigante! Coma maçãs para crescer, encoste nos rivais para eliminá-los e não bata em ninguém. 3 minutos — quem somar mais pontos vence!</p>
+            <div id="onlineForaSala">
+                <input id="onlineCodigo" maxlength="5" placeholder="CÓDIGO DA SALA" autocomplete="off">
+                <button id="btnOnlineEntrar" class="btnEmail">🚪 Entrar na sala</button>
+                <button id="btnOnlineCriar" class="btnSocial btnGoogle">🎲 Criar nova sala</button>
+            </div>
+            <div id="onlineDentroSala" class="hide">
+                <p class="onlineCodigoGrande">SALA <b id="onlineCodigoAtual" title="Clique para copiar"></b></p>
+                <p class="loginSub">Toque no código para copiar 📋</p>
+                <div id="onlineJogadoresLista"></div>
+                <button id="btnOnlineIniciar" class="btnEmail">▶ INICIAR PARTIDA (3 min)</button>
+                <p id="onlineAguardando" class="loginSub hide">Aguardando o anfitrião iniciar... ⏳</p>
+                <button id="btnOnlineSairSala" class="btnFecharLogin">← SAIR DA SALA</button>
+            </div>
+            <p id="onlineMensagem" class="loginMensagem hide"></p>
+            <button id="fecharOnline" class="btnFecharLogin">← VOLTAR</button>
+        </div>
+    </div>
+    <div id="modalResultadoOnline" class="hide">
+        <div>
+            <h2>🏁 FIM DE JOGO</h2>
+            <p class="loginSub">Resultado da sala</p>
+            <div id="onlineResultadoLista"></div>
+            <button id="btnOnlineNovaPartida" class="btnEmail">🔁 JOGAR DE NOVO</button>
+            <button id="btnOnlineVoltarMenu" class="btnFecharLogin">← MENU</button>
+        </div>
+    </div>
     <div id="authBadgeRodape" class="authBadgeRodape hide"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="script.js?v=8"></script>
+    <script src="script.js?v=20"></script>
 </body>
 </html>
