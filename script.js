@@ -368,570 +368,6 @@ async function carregarRanking(modo) {
 }
 
 /* =========================================================
-   MODO ONLINE — ARENA COMPARTILHADA estilo slither.io
-   (Supabase Realtime) Todos jogam no MESMO mapa gigante,
-   comem as mesmas maçãs, crescem e podem colidir entre si.
-   Quem criou a sala simula o jogo (host) e transmite o
-   estado; os demais enviam só a direção. Mais pontos vence.
-========================================================= */
-const DURACAO_ONLINE = 180;
-const ONLINE_MACAS = 40;
-const ONLINE_TICK = 130;
-const ONLINE_ENVIO = 100;
-const DIRS_ONLINE = { UP: [0, -1], DOWN: [0, 1], LEFT: [-1, 0], RIGHT: [1, 0] };
-const OPOSTA_ONLINE = { UP: 'DOWN', DOWN: 'UP', LEFT: 'RIGHT', RIGHT: 'LEFT' };
-let onlineAtivo = false;
-let onlineCanal = null;
-let onlineSala = null;
-let onlineHost = false;
-let onlineMeuId = null;
-let onlineJogadores = new Map();
-let onlineFimEm = 0;
-let onlineEnviouFinal = false;
-let onlineRenderOn = false;
-let onlineInterp = new Map();
-let onlineUltimoInput = 0;
-let macasOnline = null;
-let sim = null;
-let onlineCols = 80;
-let onlineRows = 80;
-
-function codigoSala() {
-    const alfabeto = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-    let c = '';
-    for (let i = 0; i < 5; i++) c += alfabeto[Math.floor(Math.random() * alfabeto.length)];
-    return c;
-}
-function nickOnline() {
-    return (nickDaConta || (localStorage.snakeName || '').trim() || 'Jogador').slice(0, 12);
-}
-function corOnline(id) {
-    const cores = ['#00e0e0', '#ff5050', '#ffe050', '#7cff2b', '#b040ff', '#ff9f3b'];
-    let h = 0;
-    for (let i2 = 0; i2 < id.length; i2++) h = (h * 31 + id.charCodeAt(i2)) >>> 0;
-    return cores[h % cores.length];
-}
-function msgOnline(texto, erro) {
-    const el = $('onlineMensagem');
-    if (!el) return;
-    el.textContent = texto;
-    el.classList.toggle('erro', !!erro);
-    el.classList.remove('hide');
-}
-function enviarOnline(payload) {
-    if (!onlineCanal) return;
-    onlineCanal.send({ type: 'broadcast', event: 'jogo', payload });
-}
-function existeHostNaSala() {
-    for (const j of onlineJogadores.values()) if (j.host) return true;
-    return false;
-}
-
-function conectarSala(codigo, comoHost) {
-    if (!sb) { msgOnline('Login indisponível: recarregue a página com internet.', true); return; }
-    if (onlineCanal) { sb.removeChannel(onlineCanal); onlineCanal = null; }
-    onlineSala = codigo.toUpperCase();
-    onlineHost = !!comoHost;
-    onlineMeuId = Math.random().toString(36).slice(2, 10);
-    onlineJogadores.clear();
-    const canal = sb.channel('cobrinha-sala-' + onlineSala, {
-        config: { broadcast: { self: false }, presence: { key: onlineMeuId } }
-    });
-    canal.on('broadcast', { event: 'jogo' }, ({ payload }) => receberMensagemOnline(payload));
-    canal.on('presence', { event: 'sync' }, () => {
-        const estado = canal.presenceState();
-        const anteriores = new Map(onlineJogadores);
-        onlineJogadores.clear();
-        Object.values(estado).forEach(arr => {
-            const p = arr && arr[0];
-            if (p && p.id) {
-                const ant = anteriores.get(p.id);
-                onlineJogadores.set(p.id, {
-                    nick: p.nick || 'Jogador',
-                    cor: corOnline(p.id),
-                    host: !!p.host,
-                    seg: ant ? ant.seg : null,
-                    score: ant ? ant.score : 0,
-                    finalizado: ant ? ant.finalizado : false,
-                    recebidoEm: ant ? ant.recebidoEm : 0
-                });
-            }
-        });
-        renderJogadoresSala();
-    });
-    canal.subscribe(status => {
-        if (status === 'SUBSCRIBED') {
-            canal.track({ id: onlineMeuId, nick: nickOnline(), host: onlineHost, skin });
-            mostrarSalaConectada();
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            msgOnline('Não deu para conectar na sala. Tente de novo.', true);
-        }
-    });
-    onlineCanal = canal;
-}
-
-function mostrarSalaConectada() {
-    $('onlineForaSala').classList.add('hide');
-    $('onlineDentroSala').classList.remove('hide');
-    $('onlineCodigoAtual').textContent = onlineSala;
-    const msg = $('onlineMensagem');
-    if (msg) msg.classList.add('hide');
-    renderJogadoresSala();
-}
-function renderJogadoresSala() {
-    const lista = $('onlineJogadoresLista');
-    if (!lista || !onlineCanal) return;
-    const linhas = [];
-    onlineJogadores.forEach((j, id) => {
-        const souEu = id === onlineMeuId;
-        const coroa = j.host ? ' 👑' : '';
-        linhas.push(`
-            <div class="onlineJogador">
-                <span class="onlineDot" style="background:${j.cor}"></span>
-                <span>${String(j.nick).replace(/[<>&]/g, '')}${coroa}${souEu ? ' (você)' : ''}</span>
-            </div>`);
-    });
-    lista.innerHTML = linhas.join('') || '<p class="loginSub">Conectando...</p>';
-    const possoIniciar = onlineHost || !existeHostNaSala();
-    const btnIniciar = $('btnOnlineIniciar');
-    if (btnIniciar) btnIniciar.classList.toggle('hide', !possoIniciar);
-    const aguardando = $('onlineAguardando');
-    if (aguardando) aguardando.classList.toggle('hide', possoIniciar);
-}
-
-function receberMensagemOnline(p) {
-    if (!p || !p.t || !onlineCanal) return;
-    if (p.t === 'start') {
-        iniciarPartidaOnline(p.iniciaEm);
-    } else if (p.t === 'estado') {
-        aplicarEstadoOnline(p.snakes, p.macas, p.fimEm, p.cols, p.rows);
-    } else if (p.t === 'input') {
-        if (onlineHost && sim) {
-            const sn = sim.snakes.get(p.id);
-            if (sn && sn.alive) sn.pend = p.d;
-        }
-    } else if (p.t === 'fim') {
-        encerrarComResultado(p.ranking);
-    }
-}
-
-function abrirModalOnline() {
-    $('onlineForaSala').classList.toggle('hide', !!onlineCanal);
-    $('onlineDentroSala').classList.toggle('hide', !onlineCanal);
-    if (onlineCanal) $('onlineCodigoAtual').textContent = onlineSala || '';
-    const msg = $('onlineMensagem');
-    if (msg) msg.classList.add('hide');
-    $('modalOnline').classList.remove('hide');
-}
-function sairDaSala() {
-    run = false;
-    onlineAtivo = false;
-    onlineRenderOn = false;
-    const appEl = document.querySelector('.app');
-    if (appEl) appEl.classList.remove('telaCheiaJogo');
-    onlineEnviouFinal = false;
-    onlineInterp.clear();
-    macasOnline = null;
-    sim = null;
-    if (onlineCanal && sb) sb.removeChannel(onlineCanal);
-    onlineCanal = null;
-    onlineSala = null;
-    onlineHost = false;
-    onlineJogadores.clear();
-    $('modalResultadoOnline').classList.add('hide');
-    $('modalOnline').classList.add('hide');
-}
-
-/* ============ SIMULAÇÃO NO HOST ============ */
-function spawnMacaSim() {
-    for (let t = 0; t < 200; t++) {
-        const x = Math.floor(Math.random() * onlineCols);
-        const y = Math.floor(Math.random() * onlineRows);
-        let livre = true;
-        for (const sn of sim.snakes.values()) {
-            for (const c of sn.seg) {
-                if (c[0] === x && c[1] === y) { livre = false; break; }
-            }
-            if (!livre) break;
-        }
-        if (livre) return [x, y];
-    }
-    return [Math.floor(Math.random() * onlineCols), Math.floor(Math.random() * onlineRows)];
-}
-
-function novoJogadorSim(id, nick, skinNome) {
-    let x = 0, y = 0;
-    for (let t = 0; t < 200; t++) {
-        x = 5 + Math.floor(Math.random() * (onlineCols - 10));
-        y = 5 + Math.floor(Math.random() * (onlineRows - 10));
-        let longe = true;
-        for (const sn of sim.snakes.values()) {
-            const c = sn.seg[0];
-            if (Math.abs(c[0] - x) < 8 && Math.abs(c[1] - y) < 8) { longe = false; break; }
-        }
-        if (longe) break;
-    }
-    return {
-        id, nick: (nick || 'Jogador').slice(0, 12),
-        skin: skinNome || 'Solida',
-        dir: 'RIGHT', pend: 'RIGHT',
-        alive: true, respawnEm: 0, score: 0,
-        seg: [[x, y], [x - 1, y], [x - 2, y], [x - 3, y]]
-    };
-}
-
-function construirSimHost() {
-    /* Arena retangular que preenche a tela: célula total ~16000,
-       formato segue a proporção da tela do anfitrião (com limite
-       pra não ficar achatada demais). Em telas grandes o mapa
-       cresce junto — mais espaço, mais maçãs. */
-    const rect = cv.getBoundingClientRect();
-    const prop = Math.max(0.6, Math.min(1.9, rect.width / rect.height));
-    onlineCols = Math.max(50, Math.min(220, Math.round(Math.sqrt(16000 * prop))));
-    onlineRows = Math.max(35, Math.min(160, Math.round(Math.sqrt(16000 / prop))));
-    sim = {
-        snakes: new Map(), macas: [], ultimoTick: 0, ultimoEnvio: 0,
-        cols: onlineCols, rows: onlineRows,
-        intervalo: Math.round(1000 / D[diff][0])
-    };
-    const lista = [];
-    onlineJogadores.forEach((j, id) => lista.push({ id, nick: j.nick, skin: j.skin }));
-    if (!lista.some(j => j.id === onlineMeuId)) lista.push({ id: onlineMeuId, nick: nickOnline(), skin });
-    lista.forEach(j => sim.snakes.set(j.id, novoJogadorSim(j.id, j.nick, j.skin)));
-    const qtdMacas = Math.round(ONLINE_MACAS * (onlineCols * onlineRows) / 10000);
-    for (let i = 0; i < qtdMacas; i++) sim.macas.push(spawnMacaSim());
-}
-
-function matarSim(sn, agora) {
-    sn.alive = false;
-    sn.respawnEm = agora + 1500;
-}
-
-function tickSimulacaoOnline() {
-    if (!sim) return;
-    const agora = Date.now();
-    /* novos jogadores que entraram no meio da partida */
-    onlineJogadores.forEach((j, id) => {
-        if (!sim.snakes.has(id)) sim.snakes.set(id, novoJogadorSim(id, j.nick, j.skin));
-    });
-    sim.snakes.forEach(sn => {
-        if (!sn.alive) {
-            if (agora >= sn.respawnEm) {
-                const pontuacao = sn.score;
-                const novo = novoJogadorSim(sn.id, sn.nick, sn.skin);
-                novo.score = pontuacao;
-                sim.snakes.set(sn.id, novo);
-            }
-            return;
-        }
-        if (sn.pend && OPOSTA_ONLINE[sn.pend] !== sn.dir) sn.dir = sn.pend;
-        const [dx, dy] = DIRS_ONLINE[sn.dir];
-        const nx = sn.seg[0][0] + dx;
-        const ny = sn.seg[0][1] + dy;
-        if (nx < 0 || ny < 0 || nx >= onlineCols || ny >= onlineRows) {
-            matarSim(sn, agora);
-            return;
-        }
-        let cresce = false;
-        const idxM = sim.macas.findIndex(m => m[0] === nx && m[1] === ny);
-        if (idxM >= 0) {
-            sim.macas.splice(idxM, 1);
-            sim.macas.push(spawnMacaSim());
-            sn.score++;
-            cresce = true;
-        }
-        for (const alvo of sim.snakes.values()) {
-            const ehPropria = alvo === sn;
-            const limite = ehPropria && !cresce ? alvo.seg.length - 1 : alvo.seg.length;
-            for (let i = 0; i < limite; i++) {
-                if (alvo.seg[i][0] === nx && alvo.seg[i][1] === ny) {
-                    matarSim(sn, agora);
-                    return;
-                }
-            }
-        }
-        sn.seg.unshift([nx, ny]);
-        if (!cresce) sn.seg.pop();
-        if (sn.seg.length > 250) sn.seg.length = 250;
-    });
-}
-
-function estadoHost() {
-    const snakes = [];
-    sim.snakes.forEach(sn => {
-        const flat = [];
-        for (let i = 0; i < sn.seg.length; i++) flat.push(sn.seg[i][0], sn.seg[i][1]);
-        snakes.push([sn.id, sn.alive ? 1 : 0, sn.score, sn.nick, sn.skin, flat]);
-    });
-    const macas = [];
-    sim.macas.forEach(m => macas.push(m[0], m[1]));
-    aplicarEstadoOnline(snakes, macas, onlineFimEm, onlineCols, onlineRows);
-    enviarOnline({ t: 'estado', snakes, macas, fimEm: onlineFimEm, cols: onlineCols, rows: onlineRows });
-}
-
-/* ============ ESTADO RECEBIDO / INTERPOLAÇÃO ============ */
-function aplicarEstadoOnline(snakes, macas, fimEm, cols, rows) {
-    if (fimEm) onlineFimEm = fimEm;
-    if (cols && rows) { onlineCols = cols; onlineRows = rows; }
-    macasOnline = macas;
-    if (!snakes) return;
-    const vistos = new Set();
-    snakes.forEach(arr => {
-        const [id, alive, score2, nick, skinNome, flat] = arr;
-        vistos.add(id);
-        let e = onlineInterp.get(id);
-        if (!e) {
-            e = { prev: null, cur: flat, ts: Date.now(), nick, skin: skinNome, alive: !!alive, score: score2 };
-            onlineInterp.set(id, e);
-        } else {
-            e.prev = e.cur;
-            e.cur = flat;
-            e.ts = Date.now();
-            e.nick = nick;
-            e.skin = skinNome;
-            e.alive = !!alive;
-            e.score = score2;
-        }
-    });
-}
-
-function enviarInputOnline(d) {
-    const agora = Date.now();
-    if (agora - onlineUltimoInput < 60) return;
-    onlineUltimoInput = agora;
-    if (onlineHost && sim) {
-        const sn = sim.snakes.get(onlineMeuId);
-        if (sn && sn.alive) sn.pend = d;
-    } else if (onlineCanal) {
-        enviarOnline({ t: 'input', id: onlineMeuId, d });
-    }
-}
-
-/* Entradas (teclado, swipe, D-pad) passam por aqui:
-   no offline viram setDir; no online viram comando. */
-function comandoDirecao(d) {
-    if (onlineAtivo) { enviarInputOnline(d); return; }
-    setDir(d);
-}
-
-function iniciarPartidaOnline(iniciaEm) {
-    $('modalOnline').classList.add('hide');
-    $('modalResultadoOnline').classList.add('hide');
-    $('overlay').classList.add('hide');
-    onlineAtivo = true;
-    onlineEnviouFinal = false;
-    onlineInterp.clear();
-    macasOnline = null;
-    onlineJogadores.forEach(j => { j.seg = null; j.score = 0; j.finalizado = false; });
-    run = false;
-    paused = false;
-    const appEl = document.querySelector('.app');
-    if (appEl) appEl.classList.add('telaCheiaJogo');
-    showScreen('game');
-    resize();
-    const label = document.querySelector('#wrap label');
-    if (label) label.textContent = 'ONLINE';
-    const elContagem = $('contagem');
-    elContagem.classList.remove('hide');
-    const intervalo = setInterval(() => {
-        const restanteMs = iniciaEm - Date.now();
-        if (restanteMs > 400) {
-            elContagem.textContent = Math.ceil(restanteMs / 1000);
-            return;
-        }
-        clearInterval(intervalo);
-        elContagem.classList.add('hide');
-        onlineFimEm = iniciaEm + DURACAO_ONLINE * 1000;
-        if (onlineHost) construirSimHost();
-        if (!onlineRenderOn) {
-            onlineRenderOn = true;
-            requestAnimationFrame(renderOnlineLoop);
-        }
-    }, 200);
-}
-
-/* ============ RENDERIZAÇÃO DA ARENA ============ */
-function renderOnlineLoop() {
-    if (!onlineAtivo) { onlineRenderOn = false; return; }
-    const agora = Date.now();
-    if (onlineHost && sim) {
-        if (!sim.ultimoTick) sim.ultimoTick = agora;
-        const passo = sim.intervalo || ONLINE_TICK;
-        while (agora - sim.ultimoTick >= passo) {
-            sim.ultimoTick += passo;
-            tickSimulacaoOnline();
-        }
-        if (agora - sim.ultimoEnvio >= ONLINE_ENVIO) {
-            sim.ultimoEnvio = agora;
-            estadoHost();
-        }
-        if (agora >= onlineFimEm) { finalizarOnlineHost(); return; }
-    } else if (onlineFimEm && agora >= onlineFimEm + 2500) {
-        /* host sumiu: encerra localmente com o último placar */
-        const ranking = [];
-        onlineInterp.forEach((e, id) => ranking.push({ id, nick: e.nick, score: e.score }));
-        ranking.sort((a, b) => b.score - a.score);
-        encerrarComResultado(ranking);
-        return;
-    }
-    drawArenaOnline();
-    hudOnline(agora);
-    requestAnimationFrame(renderOnlineLoop);
-}
-
-function getMapAreaOnline(cols, rows) {
-    const r = cv.getBoundingClientRect();
-    const cell = Math.min(r.width / cols, r.height / rows) * 0.98;
-    const w = cell * cols;
-    const h = cell * rows;
-    return { cell, w, h, x: (r.width - w) / 2, y: (r.height - h) / 2 };
-}
-
-function drawArenaOnline() {
-    const r = cv.getBoundingClientRect();
-    const t = T[theme];
-    const area = getMapAreaOnline(onlineCols, onlineRows);
-    const cell = area.cell;
-
-    ctx.clearRect(0, 0, r.width, r.height);
-    ctx.fillStyle = col(t[0]);
-    ctx.fillRect(0, 0, r.width, r.height);
-    for (let y = 0; y < onlineRows; y++) {
-        for (let x = 0; x < onlineCols; x++) {
-            ctx.fillStyle = (x + y) % 2 ? col(t[2]) : col(t[1]);
-            ctx.fillRect(area.x + x * cell, area.y + y * cell, Math.ceil(cell) + 1, Math.ceil(cell) + 1);
-        }
-    }
-    ctx.save();
-    ctx.shadowBlur = cell * 0.9;
-    ctx.shadowColor = col(t[3]);
-    ctx.strokeStyle = col(t[3]);
-    ctx.lineWidth = Math.max(2, cell * 0.08);
-    ctx.strokeRect(area.x + 1, area.y + 1, area.w - 2, area.h - 2);
-    ctx.restore();
-
-    if (macasOnline) {
-        for (let i = 0; i < macasOnline.length; i += 2) {
-            desenharMaca(
-                ctx,
-                area.x + macasOnline[i] * cell,
-                area.y + macasOnline[i + 1] * cell,
-                cell, Date.now()
-            );
-        }
-    }
-
-    const batente = ONLINE_ENVIO * 1.6;
-    onlineInterp.forEach((e, id) => {
-        if (!e.alive || !e.cur || e.cur.length < 2) return;
-        const frac = Math.max(0, Math.min(1, (Date.now() - e.ts) / batente));
-        const n = e.cur.length / 2;
-        const pts = [];
-        for (let i = 0; i < n; i++) {
-            const cx = e.cur[i * 2];
-            const cy = e.cur[i * 2 + 1];
-            let gx = cx, gy = cy;
-            if (e.prev && e.prev.length > i * 2 + 1) {
-                const px = e.prev[i * 2];
-                const py = e.prev[i * 2 + 1];
-                let dx = cx - px, dy = cy - py;
-                if (dx > onlineCols / 2) dx -= onlineCols; else if (dx < -onlineCols / 2) dx += onlineCols;
-                if (dy > onlineRows / 2) dy -= onlineRows; else if (dy < -onlineRows / 2) dy += onlineRows;
-                gx = px + dx * frac;
-                gy = py + dy * frac;
-            }
-            pts.push([gx, gy]);
-        }
-        /* desenha com a skin de cada jogador */
-        const skinAntes = skin, corAntes = color;
-        skin = e.skin || 'Solida';
-        color = corOnline(id);
-        for (let i = 0; i < pts.length; i++) {
-            desenharSegmento(area.x + pts[i][0] * cell, area.y + pts[i][1] * cell, cell, i, n);
-        }
-        ctx.fillStyle = '#111';
-        const olho = Math.max(2, cell * 0.13);
-        const hx = area.x + pts[0][0] * cell;
-        const hy = area.y + pts[0][1] * cell;
-        ctx.fillRect(hx + cell * 0.25, hy + cell * 0.25, olho, olho);
-        ctx.fillRect(hx + cell * 0.65, hy + cell * 0.25, olho, olho);
-        skin = skinAntes;
-        color = corAntes;
-        ctx.font = `600 ${Math.max(10, cell * 1.4)}px 'Space Grotesk', sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#ffffff';
-        ctx.shadowBlur = 4;
-        ctx.shadowColor = 'rgba(0,0,0,.8)';
-        ctx.fillText(String(e.nick).replace(/[<>&]/g, ''), hx + cell * 0.5, hy - cell * 0.35);
-        ctx.shadowBlur = 0;
-    });
-}
-
-function hudOnline(agora) {
-    const meu = onlineInterp.get(onlineMeuId);
-    $('score').textContent = meu ? meu.score : 0;
-    $('time').textContent = Math.max(0, Math.ceil((onlineFimEm - agora) / 1000)) + 's';
-    $('lvl').textContent = 'ONLINE';
-    $('dh').textContent = onlineSala || '';
-    let vivos = 0, total = 0, melhor = null;
-    onlineInterp.forEach(e => {
-        total++;
-        if (e.alive) vivos++;
-        if (!melhor || e.score > melhor.score) melhor = e;
-    });
-    const toast = $('toastEvento');
-    if (toast) {
-        /* jogando sozinho não precisa de placar de líder */
-        const mostrar = total > 1 && melhor;
-        toast.textContent = mostrar ? `👑 ${String(melhor.nick).replace(/[<>&]/g, '')}: ${melhor.score} · 🐍 ${vivos}/${total}` : '';
-        toast.classList.toggle('hide', !mostrar);
-    }
-    const label = document.querySelector('#wrap label');
-    const textoLabel = `ONLINE ${onlineCols}×${onlineRows} · ${diff}`;
-    if (label && label.textContent !== textoLabel) label.textContent = textoLabel;
-}
-
-function finalizarOnlineHost() {
-    if (!sim) { onlineAtivo = false; return; }
-    const ranking = [];
-    sim.snakes.forEach(sn => ranking.push({ id: sn.id, nick: sn.nick, score: sn.score }));
-    ranking.sort((a, b) => b.score - a.score);
-    enviarOnline({ t: 'fim', ranking });
-    encerrarComResultado(ranking);
-}
-
-function encerrarComResultado(ranking) {
-    onlineAtivo = false;
-    onlineRenderOn = false;
-    sim = null;
-    const meu = ranking.find(r2 => r2.id === onlineMeuId);
-    const meusPts = meu ? meu.score : 0;
-    coins += meusPts;
-    totalXP += meusPts;
-    coinsThisRun = 0;
-    localStorage.snakeCoins = coins;
-    localStorage.snakeXP = totalXP;
-    atualizarStatusJogador();
-    salvarProgresso();
-    const primeiro = ranking[0];
-    const h2 = document.querySelector('#modalResultadoOnline h2');
-    if (h2) {
-        if (primeiro && primeiro.score > 0 && primeiro.id === onlineMeuId) h2.textContent = '🏆 VOCÊ VENCEU!';
-        else if (primeiro && primeiro.score > 0) h2.textContent = `🏆 ${String(primeiro.nick).replace(/[<>&]/g, '')} VENCEU!`;
-        else h2.textContent = '🤝 EMPATE!';
-    }
-    const lista = $('onlineResultadoLista');
-    if (lista) {
-        lista.innerHTML = ranking.map((r2, i) =>
-            `<div class="row rankRow"><span>${i + 1}. ${String(r2.nick).replace(/[<>&]/g, '')}${r2.id === onlineMeuId ? ' (você)' : ''}</span><b>${r2.score} pts</b></div>`
-        ).join('');
-    }
-    const btnNova = $('btnOnlineNovaPartida');
-    if (btnNova) btnNova.classList.toggle('hide', !(onlineHost || !existeHostNaSala()));
-    $('modalResultadoOnline').classList.remove('hide');
-}
-
-/* =========================================================
    TEMAS
 ========================================================= */
 const T = {
@@ -2632,10 +2068,10 @@ function setDir(d) {
 }
 window.onkeydown = e => {
     const k = e.key.toLowerCase();
-    if (k === 'arrowup' || k === 'w') comandoDirecao(direcaoAtiva('UP'));
-    if (k === 'arrowdown' || k === 's') comandoDirecao(direcaoAtiva('DOWN'));
-    if (k === 'arrowleft' || k === 'a') comandoDirecao(direcaoAtiva('LEFT'));
-    if (k === 'arrowright' || k === 'd') comandoDirecao(direcaoAtiva('RIGHT'));
+    if (k === 'arrowup' || k === 'w') setDir(direcaoAtiva('UP'));
+    if (k === 'arrowdown' || k === 's') setDir(direcaoAtiva('DOWN'));
+    if (k === 'arrowleft' || k === 'a') setDir(direcaoAtiva('LEFT'));
+    if (k === 'arrowright' || k === 'd') setDir(direcaoAtiva('RIGHT'));
     if (k === 'escape') togglePause();
 };
 
@@ -2653,9 +2089,9 @@ cv.ontouchmove = e => {
     const y = e.touches[0].clientY - sy;
     if (Math.max(Math.abs(x), Math.abs(y)) < 20) return;
     if (Math.abs(x) > Math.abs(y)) {
-        comandoDirecao(direcaoAtiva(x > 0 ? 'RIGHT' : 'LEFT'));
+        setDir(direcaoAtiva(x > 0 ? 'RIGHT' : 'LEFT'));
     } else {
-        comandoDirecao(direcaoAtiva(y > 0 ? 'DOWN' : 'UP'));
+        setDir(direcaoAtiva(y > 0 ? 'DOWN' : 'UP'));
     }
     swipeAtivo = true;
 };
@@ -2675,7 +2111,7 @@ function configurarDpad() {
         if (!btn) return;
         const acionar = e => {
             e.preventDefault();
-            comandoDirecao(direcaoAtiva(b.direcao));
+            setDir(direcaoAtiva(b.direcao));
         };
         btn.addEventListener('pointerdown', acionar);
     });
@@ -2812,14 +2248,17 @@ function move() {
 ========================================================= */
 /* Maçã caprichada (igual no jogo e na prévia): corpo
    brilhante, reflexo de luz, cabinho e folha — pulsa
-   suavemente como se estivesse viva. */
-function desenharMaca(gM, mx, my, cellM, tempoM) {
+   suavemente. `semGlow` desliga o brilho caro quando há
+   muitas maçãs na tela (arena online), aliviando o render. */
+function desenharMaca(gM, mx, my, cellM, tempoM, semGlow) {
     const pulsoM = Math.sin(tempoM / 320 + (mx + my) * 0.35) * 0.5 + 0.5;
     const cxa = mx + cellM / 2;
     const cya = my + cellM * 0.56;
     const raio = cellM * (0.29 + pulsoM * 0.025);
-    gM.shadowBlur = cellM * (0.14 + pulsoM * 0.2);
-    gM.shadowColor = 'rgba(255, 45, 45, .8)';
+    if (!semGlow) {
+        gM.shadowBlur = cellM * (0.14 + pulsoM * 0.2);
+        gM.shadowColor = 'rgba(255, 45, 45, .8)';
+    }
     const brilhoM = gM.createRadialGradient(cxa - raio * 0.3, cya - raio * 0.35, raio * 0.15, cxa, cya, raio * 1.15);
     brilhoM.addColorStop(0, '#ff6b5e');
     brilhoM.addColorStop(0.45, '#e8262f');
@@ -2833,6 +2272,7 @@ function desenharMaca(gM, mx, my, cellM, tempoM) {
     gM.beginPath();
     gM.ellipse(cxa - raio * 0.34, cya - raio * 0.32, raio * 0.24, raio * 0.15, -0.6, 0, Math.PI * 2);
     gM.fill();
+    if (semGlow) return; /* em mapa cheio, cabinho e folha são cortados */
     gM.strokeStyle = '#5c3a12';
     gM.lineWidth = Math.max(1, cellM * 0.05);
     gM.lineCap = 'round';
@@ -2852,31 +2292,73 @@ function desenharMaca(gM, mx, my, cellM, tempoM) {
 
 /* Cenário do tema Cosmos: nebulosas, estrelas titilando,
    buraco negro com disco de acreção girando e um planeta
-   distante com anel — tudo animado atrás da partida. */
+   distante com anel — tudo animado atrás da partida.
+   OTIMIZAÇÃO: os gradientes caros são criados UMA vez
+   (cache) e reutilizados a cada quadro; a "respiração"
+   das nebulosas passa a usar globalAlpha em vez de
+   recriar gradiente. */
+let cosmosCache = { chave: '', nebulosas: [], halo: null, nucleo: null, esfera: null, galaxias: [], bhx: 0, bhy: 0, raioB: 0, plx: 0, ply: 0, raioP: 0 };
 function desenharCosmos(area, cell) {
     const agora = Date.now();
     const rnd = n => {
         const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
         return x - Math.floor(x);
     };
-    /* nebulosas suaves que "respiram" (crescem e encolhem) */
-    [[0.28, 0.6, [120, 60, 220], 0.16, 0.36],
-     [0.78, 0.22, [60, 110, 230], 0.15, 0.3],
-     [0.55, 0.85, [200, 70, 160], 0.12, 0.26],
-     [0.12, 0.18, [40, 190, 180], 0.11, 0.2],
-     [0.9, 0.55, [90, 60, 200], 0.12, 0.24],
-     [0.4, 0.4, [160, 100, 255], 0.09, 0.3]].forEach((nb, idxN) => {
-        const respira = 1 + Math.sin(agora / 4200 + idxN * 2.1) * 0.14;
-        const nx = area.x + area.size * nb[0];
-        const ny = area.y + area.size * nb[1];
-        const nr = area.size * nb[4] * respira;
-        const alfaN = nb[3] * (0.8 + Math.sin(agora / 4200 + idxN * 2.1) * 0.2);
-        const neb = ctx.createRadialGradient(nx, ny, 0, nx, ny, nr);
-        neb.addColorStop(0, `rgba(${nb[2][0]}, ${nb[2][1]}, ${nb[2][2]}, ${alfaN})`);
-        neb.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = neb;
-        ctx.fillRect(nx - nr, ny - nr, nr * 2, nr * 2);
+    const chave = [area.x, area.y, area.size, cell].join('|');
+    if (cosmosCache.chave !== chave) {
+        cosmosCache = { chave, nebulosas: [], halo: null, nucleo: null, esfera: null, galaxias: [], bhx: 0, bhy: 0, raioB: 0, plx: 0, ply: 0, raioP: 0 };
+        cosmosCache.nebulosas = [[0.28, 0.6, [120, 60, 220], 0.16, 0.36],
+         [0.78, 0.22, [60, 110, 230], 0.15, 0.3],
+         [0.55, 0.85, [200, 70, 160], 0.12, 0.26],
+         [0.12, 0.18, [40, 190, 180], 0.11, 0.2],
+         [0.9, 0.55, [90, 60, 200], 0.12, 0.24],
+         [0.4, 0.4, [160, 100, 255], 0.09, 0.3]].map(nb => {
+            const nx = area.x + area.size * nb[0];
+            const ny = area.y + area.size * nb[1];
+            const nr = area.size * nb[4];
+            const neb = ctx.createRadialGradient(nx, ny, 0, nx, ny, nr);
+            neb.addColorStop(0, `rgba(${nb[2][0]}, ${nb[2][1]}, ${nb[2][2]}, ${nb[3]})`);
+            neb.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            return { grad: neb, x: nx, y: ny, r: nr };
+        });
+        cosmosCache.bhx = area.x + area.size * (0.2 + rnd(7) * 0.12);
+        cosmosCache.bhy = area.y + area.size * (0.3 + rnd(17) * 0.12);
+        cosmosCache.raioB = cell * 2.6;
+        const haloB = ctx.createRadialGradient(cosmosCache.bhx, cosmosCache.bhy, cosmosCache.raioB, cosmosCache.bhx, cosmosCache.bhy, cosmosCache.raioB * 2.6);
+        haloB.addColorStop(0, 'rgba(120, 80, 255, .18)');
+        haloB.addColorStop(0.5, 'rgba(60, 30, 140, .08)');
+        haloB.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        cosmosCache.halo = haloB;
+        const nucleo = ctx.createRadialGradient(cosmosCache.bhx, cosmosCache.bhy, cosmosCache.raioB * 0.15, cosmosCache.bhx, cosmosCache.bhy, cosmosCache.raioB);
+        nucleo.addColorStop(0, 'rgba(0, 0, 0, 1)');
+        nucleo.addColorStop(0.72, 'rgba(2, 0, 10, .96)');
+        nucleo.addColorStop(1, 'rgba(20, 8, 50, 0)');
+        cosmosCache.nucleo = nucleo;
+        cosmosCache.plx = area.x + area.size * 0.8;
+        cosmosCache.ply = area.y + area.size * 0.74;
+        cosmosCache.raioP = cell * 1.5;
+        const esfera = ctx.createRadialGradient(cosmosCache.plx - cosmosCache.raioP * 0.35, cosmosCache.ply - cosmosCache.raioP * 0.35, cosmosCache.raioP * 0.15, cosmosCache.plx, cosmosCache.ply, cosmosCache.raioP);
+        esfera.addColorStop(0, '#7ab8ff');
+        esfera.addColorStop(0.6, '#2c4a9e');
+        esfera.addColorStop(1, '#101a3c');
+        cosmosCache.esfera = esfera;
+        cosmosCache.galaxias = [0, 1, 2].map(gal => {
+            const rgG = cell * (1.1 + gal * 0.4);
+            const nucleoG = ctx.createRadialGradient(0, 0, 0, 0, 0, rgG * 0.35);
+            nucleoG.addColorStop(0, 'rgba(255, 245, 220, .5)');
+            nucleoG.addColorStop(1, 'rgba(255, 245, 220, 0)');
+            return nucleoG;
+        });
+    }
+    const C = cosmosCache;
+    /* nebulosas que "respiram" — globalAlpha em vez de recriar */
+    C.nebulosas.forEach((nb, idxN) => {
+        const respira = 1 + Math.sin(agora / 4200 + idxN * 2.1);
+        ctx.globalAlpha = 0.75 + respira * 0.12;
+        ctx.fillStyle = nb.grad;
+        ctx.fillRect(nb.x - nb.r, nb.y - nb.r, nb.r * 2, nb.r * 2);
     });
+    ctx.globalAlpha = 1;
     /* estrelas titilando: 70 delas em 3 tamanhos, céu denso */
     for (let st = 0; st < 70; st++) {
         const xs = area.x + rnd(st + 1) * (area.size - cell * 2) + cell;
@@ -2917,10 +2399,7 @@ function desenharCosmos(area, cell) {
             }
             ctx.stroke();
         }
-        const nucleoG = ctx.createRadialGradient(0, 0, 0, 0, 0, rg * 0.35);
-        nucleoG.addColorStop(0, 'rgba(255, 245, 220, .5)');
-        nucleoG.addColorStop(1, 'rgba(255, 245, 220, 0)');
-        ctx.fillStyle = nucleoG;
+        ctx.fillStyle = C.galaxias[gal];
         ctx.beginPath();
         ctx.arc(0, 0, rg * 0.35, 0, Math.PI * 2);
         ctx.fill();
@@ -2994,14 +2473,8 @@ function desenharCosmos(area, cell) {
         ctx.fill();
     }
     /* buraco negro com disco de acreção + halo gravitacional */
-    const bhx = area.x + area.size * (0.2 + rnd(7) * 0.12);
-    const bhy = area.y + area.size * (0.3 + rnd(17) * 0.12);
-    const raioB = cell * 2.6;
-    const haloB = ctx.createRadialGradient(bhx, bhy, raioB, bhx, bhy, raioB * 2.6);
-    haloB.addColorStop(0, 'rgba(120, 80, 255, .18)');
-    haloB.addColorStop(0.5, 'rgba(60, 30, 140, .08)');
-    haloB.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = haloB;
+    const bhx = C.bhx, bhy = C.bhy, raioB = C.raioB;
+    ctx.fillStyle = C.halo;
     ctx.fillRect(bhx - raioB * 2.6, bhy - raioB * 2.6, raioB * 5.2, raioB * 5.2);
     ctx.save();
     ctx.translate(bhx, bhy);
@@ -3018,23 +2491,13 @@ function desenharCosmos(area, cell) {
         ctx.stroke();
     }
     ctx.restore();
-    const nucleo = ctx.createRadialGradient(bhx, bhy, raioB * 0.15, bhx, bhy, raioB);
-    nucleo.addColorStop(0, 'rgba(0, 0, 0, 1)');
-    nucleo.addColorStop(0.72, 'rgba(2, 0, 10, .96)');
-    nucleo.addColorStop(1, 'rgba(20, 8, 50, 0)');
-    ctx.fillStyle = nucleo;
+    ctx.fillStyle = C.nucleo;
     ctx.beginPath();
     ctx.arc(bhx, bhy, raioB, 0, Math.PI * 2);
     ctx.fill();
     /* planeta distante com anéis girando e luas orbitando */
-    const plx = area.x + area.size * 0.8;
-    const ply = area.y + area.size * 0.74;
-    const raioP = cell * 1.5;
-    const esfera = ctx.createRadialGradient(plx - raioP * 0.35, ply - raioP * 0.35, raioP * 0.15, plx, ply, raioP);
-    esfera.addColorStop(0, '#7ab8ff');
-    esfera.addColorStop(0.6, '#2c4a9e');
-    esfera.addColorStop(1, '#101a3c');
-    ctx.fillStyle = esfera;
+    const plx = C.plx, ply = C.ply, raioP = C.raioP;
+    ctx.fillStyle = C.esfera;
     ctx.beginPath();
     ctx.arc(plx, ply, raioP, 0, Math.PI * 2);
     ctx.fill();
@@ -3189,7 +2652,7 @@ function loop(now) {
             move();
         }
 
-        if (modoEncolheMapa() && !onlineAtivo) {
+        if (modoEncolheMapa()) {
             const reducoes = Math.floor(gameTime / 60);
             const tamanhoEsperado = Math.max(MAPA_MINIMO, MAPA_INICIAL - reducoes * 2);
             if (tamanhoEsperado < mapSize) shrinkMap();
@@ -3314,7 +2777,6 @@ function end() {
    HOME
 ========================================================= */
 function home() {
-    if (onlineCanal) sairDaSala();
     run = false;
     paused = false;
     const appEl = document.querySelector('.app');
@@ -3386,7 +2848,6 @@ $('rankModoSelect').onchange = () => {
    PAUSA
 ========================================================= */
 function togglePause() {
-    if (onlineAtivo) return;
     if (!run) return;
     if (!paused) {
         paused = true;
@@ -3470,70 +2931,6 @@ if (inputNickEscolha) {
         if (e.key === 'Enter') confirmarNick();
     });
 }
-
-/* =========================================================
-   MODO ONLINE — BOTÕES
-========================================================= */
-ligarBotao('openOnline', abrirModalOnline);
-ligarBotao('fecharOnline', () => {
-    if (onlineCanal) sairDaSala();
-    $('modalOnline').classList.add('hide');
-});
-ligarBotao('btnOnlineCriar', () => conectarSala(codigoSala(), true));
-ligarBotao('btnOnlineEntrar', () => {
-    const cod = ($('onlineCodigo').value || '').trim().toUpperCase();
-    if (cod.length !== 5) { msgOnline('Digite o código da sala (5 letras/números).', true); return; }
-    conectarSala(cod, false);
-});
-ligarBotao('btnOnlineIniciar', () => {
-    if (!onlineCanal) return;
-    if (!onlineHost && existeHostNaSala()) { msgOnline('Só o anfitrião (👑) pode iniciar.', true); return; }
-    if (!onlineHost) {
-        onlineHost = true;
-        onlineCanal.track({ id: onlineMeuId, nick: nickOnline(), host: true });
-    }
-    const iniciaEm = Date.now() + 3500;
-    enviarOnline({ t: 'start', iniciaEm });
-    iniciarPartidaOnline(iniciaEm);
-});
-ligarBotao('btnOnlineSairSala', sairDaSala);
-ligarBotao('btnOnlineNovaPartida', () => {
-    if (!onlineCanal) return;
-    if (!onlineHost && existeHostNaSala()) return;
-    if (!onlineHost) {
-        onlineHost = true;
-        onlineCanal.track({ id: onlineMeuId, nick: nickOnline(), host: true });
-    }
-    const iniciaEm = Date.now() + 3500;
-    enviarOnline({ t: 'start', iniciaEm });
-    iniciarPartidaOnline(iniciaEm);
-});
-ligarBotao('btnOnlineVoltarMenu', () => {
-    sairDaSala();
-    home();
-});
-const inputOnlineCodigo = document.getElementById('onlineCodigo');
-if (inputOnlineCodigo) {
-    inputOnlineCodigo.addEventListener('input', () => {
-        inputOnlineCodigo.value = inputOnlineCodigo.value.toUpperCase();
-    });
-    inputOnlineCodigo.addEventListener('keydown', e => {
-        if (e.key === 'Enter') conectarSala((inputOnlineCodigo.value || '').trim(), false);
-    });
-}
-const codigoGrande = document.getElementById('onlineCodigoAtual');
-if (codigoGrande) {
-    codigoGrande.onclick = () => {
-        if (navigator.clipboard && onlineSala) {
-            navigator.clipboard.writeText(onlineSala).then(() => {
-                msgOnline('Código copiado! Manda pros amigos. 📋', false);
-            }).catch(() => {});
-        }
-    };
-}
-window.addEventListener('beforeunload', () => {
-    if (onlineCanal && sb) sb.removeChannel(onlineCanal);
-});
 
 /* =========================================================
    NOME
