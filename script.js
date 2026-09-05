@@ -3071,12 +3071,41 @@ function simPrevPasso() {
         s.snake.pop();
     }
 }
+/* Miniatura ESTÁTICA (usada no celular): desenha a cobrinha
+   uma única vez, sem animação — economiza bateria e mata o
+   lag da lista de skins em aparelhos mais fracos. */
+function desenharMiniEstatica(cnv) {
+    const g = cnv.getContext('2d');
+    const w = cnv.width, h = cnv.height;
+    g.shadowBlur = 0;
+    g.clearRect(0, 0, w, h);
+    const skinOrig = skin, corOrig = color;
+    skin = cnv.dataset.skin;
+    const n = 5;
+    const cell = h * 0.30;
+    let hx = 0, hy = 0;
+    for (let i = n - 1; i >= 0; i--) {
+        const t = i * 0.75;
+        const x = w * 0.16 + i * (w * 0.68 / (n - 1));
+        const y = h / 2 + Math.sin(t) * h * 0.14;
+        desenharSegmento(x - cell / 2, y - cell / 2, cell, i, n, g);
+        if (i === 0) { hx = x - cell / 2; hy = y - cell / 2; }
+    }
+    const olho = Math.max(1.5, cell * 0.13);
+    g.fillStyle = '#fff';
+    g.fillRect(hx + cell * 0.25, hy + cell * 0.25, olho, olho);
+    g.fillRect(hx + cell * 0.65, hy + cell * 0.25, olho, olho);
+    skin = skinOrig;
+    color = corOrig;
+}
 function animarPreviasSkins() {
     const aberta = !$('menuSkins').classList.contains('hide');
     document.body.classList.toggle('mostrandoSkins', aberta && (window.innerWidth >= 900 || document.body.classList.contains('previaLigada')));
     if (!aberta) { previaAnimRaf = null; return; }
     const agora = Date.now();
-    document.querySelectorAll('#listaSkins .previaCanvas').forEach(cnv => {
+    /* No celular as miniaturas ficam estáticas (desenhadas uma
+       vez no renderSkins); só o PC anima todas em tempo real. */
+    if (!ehMobile) document.querySelectorAll('#listaSkins .previaCanvas').forEach(cnv => {
         const g = cnv.getContext('2d');
         const w = cnv.width, h = cnv.height;
         g.shadowBlur = 0;
@@ -3177,11 +3206,16 @@ function renderSkins() {
         }
         return `
             <div class="linhaSkin ${ativa ? 'ativa' : ''}">
-                <div class="previaSkin previa-${nomeSkin}"><canvas class="previaCanvas" data-skin="${nomeSkin}" width="84" height="84"></canvas></div>
+                <div class="previaSkin previa-${nomeSkin}"><canvas class="previaCanvas" data-skin="${nomeSkin}" width="84" height="84"></canvas>${ehMobile ? `<button class="btnOlhoPrev" data-olho="${nomeSkin}" aria-label="Ver prévia de ${info.nome}">👁</button>` : ''}</div>
                 <div class="infoSkin"><b>${info.nome}</b></div>
                 <div class="acaoSkin">${acaoHtml}</div>
             </div>`;
     }).join('');
+    if (ehMobile) {
+        /* Celular: miniaturas paradas (desenha 1x) + olho que
+           abre a prévia grande apenas da skin clicada. */
+        $('listaSkins').querySelectorAll('.previaCanvas').forEach(desenharMiniEstatica);
+    }
     if (!previaAnimRaf) previaAnimRaf = requestAnimationFrame(animarPreviasSkins);
     previaGrandeSkin = null;
     $('listaSkins').querySelectorAll('.linhaSkin').forEach(linha => {
@@ -3189,6 +3223,20 @@ function renderSkins() {
             const cnvL = linha.querySelector('.previaCanvas');
             if (cnvL) previaGrandeSkin = cnvL.dataset.skin;
         });
+    });
+    $('listaSkins').querySelectorAll('[data-olho]').forEach(btn => {
+        btn.onclick = () => {
+            const nSk = btn.dataset.olho;
+            if (document.body.classList.contains('previaLigada') && previaGrandeSkin === nSk) {
+                document.body.classList.remove('previaLigada');
+                previaGrandeSkin = null;
+            } else {
+                previaGrandeSkin = nSk;
+                document.body.classList.add('previaLigada');
+            }
+            $('listaSkins').querySelectorAll('.btnOlhoPrev').forEach(b =>
+                b.classList.toggle('olhoAtivo', b.dataset.olho === previaGrandeSkin));
+        };
     });
     $('listaSkins').querySelectorAll('[data-selecionar]').forEach(btn => {
         btn.onclick = () => {
