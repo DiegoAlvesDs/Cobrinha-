@@ -133,6 +133,9 @@ header button{
     font-size: 18px;
     border-radius: 12px;
 }
+.app.semHeader header{
+    display: none;
+}
 
 /* =========================================================
    TELAS
@@ -488,50 +491,99 @@ header button{
     border: 1px solid rgba(255, 255, 255, .25);
     box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .25), 0 4px 10px -4px rgba(0, 0, 0, .5);
     position: relative;
+    overflow: hidden;
+}
+.previaCanvas{
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+}
+#previaGrande{
+    display: none;
+    position: fixed;
+    left: 5vw;
+    top: 50%;
+    transform: translateY(-50%);
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+    z-index: 5;
+}
+#previaGrande canvas{
+    width: min(26vw, 340px);
+    height: auto;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, .15);
+    background: rgba(0, 0, 0, .28);
+    box-shadow: 0 14px 44px -12px rgba(0, 0, 0, .65);
+}
+#previaGrande b{
+    font-size: 16px;
+    font-weight: 700;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, .6);
+}
+#previaGrande span{
+    font-size: 11.5px;
+    opacity: .75;
+    letter-spacing: .5px;
+}
+@media (min-width: 900px){
+    body.mostrandoSkins #previaGrande{ display: flex; }
 }
 
 /* skins (mesmos nomes de classe usados pelo script.js) */
 .previa-Solida{ background: #00c060; }
 .previa-Listrada{ background: repeating-linear-gradient(45deg, #00c060, #00c060 6px, #007a3c 6px, #007a3c 12px); }
-.previa-Retro{ background: #00c060; border: 3px solid #000; }
+.previa-Retro{ background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.25), transparent 60%), #00c060; border: 3px solid #000; }
 .previa-Gradiente{ background: linear-gradient(135deg, #00c060, #002010); }
-.previa-Gelo{ background: rgba(143, 220, 255, .75); border-color: #e0faff; }
+.previa-Gelo{ background: linear-gradient(135deg, #b6e6ff, #5aa0d8 55%, #28719e); box-shadow: inset 0 0 0 1px rgba(235, 252, 255, .8), 0 0 10px 2px rgba(159, 220, 255, .5); }
 .previa-Neon{ background: #00e0e0; box-shadow: 0 0 12px 3px #00e0e0; }
-.previa-Espinhada{ background: #ff5030; clip-path: polygon(15% 0%, 85% 0%, 100% 15%, 100% 85%, 85% 100%, 15% 100%, 0% 85%, 0% 15%); }
+.previa-Espinhada{ background: linear-gradient(135deg, #ff7060, #ff4020 50%, #c02010); clip-path: polygon(15% 0%, 85% 0%, 100% 15%, 100% 85%, 85% 100%, 15% 100%, 0% 85%, 0% 15%); }
 .previa-Fantasma{ background: rgba(200, 200, 255, .4); border-color: rgba(200, 200, 255, .9); }
 .previa-ArcoIris{ background: linear-gradient(90deg, #ff3b3b, #ff9f3b, #f6ff3b, #3bff57, #3bb0ff, #8a3bff); }
 .previa-Metalica{ background: linear-gradient(135deg, #ffffff, #8a8a94, #ffffff); }
-.previa-Fogo{ background: linear-gradient(135deg, #ff3c00, #ff9600, #ffdc3c); }
-.previa-Camuflada{ background: repeating-conic-gradient(#3a4d2b 0% 25%, #5a6b3a 0% 50%); background-size: 10px 10px; }
-.previa-Dourada{ background: linear-gradient(135deg, #7a5a10, #ffd75a, #7a5a10); }
-.previa-Toxica{ background: #4ea60f; box-shadow: 0 0 12px 3px #7cff2b; }
-.previa-Estelar{ background: radial-gradient(circle at 30% 30%, #fff 0 2px, transparent 3px), radial-gradient(circle at 70% 60%, #fff 0 2px, transparent 3px), radial-gradient(circle at 50% 80%, #fff 0 2px, transparent 3px), #140a2e; }
-.previa-Cristal{ background: rgba(179, 157, 255, .55); border-color: #eae0ff; }
-.previa-Sombria{ background: linear-gradient(135deg, #1a1a22, #050508); border-color: rgba(140, 120, 200, .5); }
-.previa-Aurora{ background: linear-gradient(90deg, #ff9fd6, #9fffde, #9fd6ff); }
-.previa-Vulcanica{ background: linear-gradient(135deg, #1a0a05, #ff5000); }
-.previa-Eletrica{ background: #1e6fbf; box-shadow: 0 0 12px 3px #7ad0ff; }
+.previa-Fogo{ background: linear-gradient(0deg, #8a1a00, #e83c08 40%, #ff9600 75%, #ffdc3c); box-shadow: 0 0 12px 3px rgba(255, 122, 31, .6); }
+.previa-Camuflada{ background: #3a4d2b; background-image: radial-gradient(ellipse 8px 6px at 20% 30%, #6b7a45, transparent 70%), radial-gradient(ellipse 9px 6px at 70% 60%, #23301a, transparent 70%), radial-gradient(ellipse 7px 5px at 45% 80%, #4a5c33, transparent 70%), radial-gradient(ellipse 8px 6px at 85% 15%, #2e3b22, transparent 70%); box-shadow: inset 0 0 0 2px rgba(20, 26, 14, .5); }
+.previa-Dourada{ background: linear-gradient(135deg, #8a6410, #ffd75a 35%, #fff3c4 50%, #e8b23a 65%, #6e4e0a); box-shadow: 0 0 10px 2px rgba(255, 207, 64, .55); }
+.previa-Toxica{ background: linear-gradient(180deg, #96ff32, #5ec414 50%, #2e6e08); box-shadow: 0 0 14px 3px #7cff2b; }
+.previa-Estelar{ background: radial-gradient(circle at 30% 30%, #fff 0 2px, transparent 3px), radial-gradient(circle at 70% 60%, #fff 0 2px, transparent 3px), radial-gradient(circle at 50% 80%, #fff 0 2px, transparent 3px), linear-gradient(160deg, #1c1848, #0c0a24); }
+.previa-Cristal{ background: linear-gradient(135deg, #c4aaff, #f2ecff 50%, #8264dc); box-shadow: 0 0 12px 2px rgba(201, 178, 255, .6); }
+.previa-Sombria{ background: radial-gradient(circle at 50% 45%, #463278, #191430 60%, #07050c); box-shadow: 0 0 10px 2px rgba(140, 110, 220, .35); }
+.previa-Aurora{ background: linear-gradient(175deg, transparent 20%, rgba(40, 240, 140, .75) 45%, rgba(90, 200, 255, .65) 65%, rgba(190, 120, 255, .6) 85%, transparent), #050816; box-shadow: 0 0 12px 2px rgba(60, 230, 160, .4); }
+.previa-Vulcanica{ background: linear-gradient(160deg, #2a1210, #140808 55%, rgba(255, 90, 0, .55)); box-shadow: 0 0 12px 3px rgba(255, 90, 0, .5); }
+.previa-Eletrica{ background: linear-gradient(180deg, #0c2a52, #4a7fd0 50%, #081c3a); box-shadow: 0 0 12px 3px #7ad0ff; }
 .previa-Prateada{ background: linear-gradient(135deg, #b8b8c0, #f4f4f8, #8c8c94); }
-.previa-Sanguinea{ background: #6a0010; box-shadow: 0 0 12px 3px #a00010; }
-.previa-Realeza{ background: linear-gradient(135deg, #3a0a5c, #7a2fc0, #ffd75a); }
+.previa-Sanguinea{ background: radial-gradient(circle at 50% 45%, #dc1e3c, #7a0413 55%, #3c0208); box-shadow: 0 0 12px 3px rgba(192, 0, 24, .6); }
+.previa-Realeza{ background: radial-gradient(circle at 30% 28%, #8a3ff0, #3a0a5c 62%, #1c0530); box-shadow: inset 0 0 0 1px rgba(255, 214, 90, .55), 0 0 8px rgba(255, 214, 90, .25); }
 .previa-Marinha{ background: linear-gradient(135deg, #00285a, #0082b4); }
-.previa-Celestial{ background: radial-gradient(circle at 30% 30%, #fff 0 2px, transparent 3px), radial-gradient(circle at 70% 60%, #fff 0 2px, transparent 3px), #0a1030; }
+.previa-Celestial{ background: radial-gradient(circle at 50% 50%, #ffdf8a 0 8%, transparent 30%), conic-gradient(from 0deg, rgba(255, 230, 150, .35) 0 8%, transparent 8% 17%, rgba(255, 230, 150, .35) 17% 25%, transparent 25% 33%, rgba(255, 230, 150, .35) 33% 42%, transparent 42% 50%, rgba(255, 230, 150, .35) 50% 58%, transparent 58% 67%, rgba(255, 230, 150, .35) 67% 75%, transparent 75% 83%, rgba(255, 230, 150, .35) 83% 92%, transparent 92%), linear-gradient(180deg, #1a1f4e, #283a7a 55%, #0c1030); }
 .previa-Fenix{ background: radial-gradient(circle at 50% 50%, #fff6d0, #ffb020 40%, #ff5500 75%, #a01400); box-shadow: 0 0 14px 3px #ff6a00; }
-.previa-Dragao{ background: linear-gradient(135deg, #0a2e1a, #1c5c34, #0a2e1a); box-shadow: 0 0 0 2px rgba(255, 215, 90, .5) inset; }
-.previa-Cavaleiro{ background: linear-gradient(135deg, #9aa0ac, #d4d9e2, #5c616c); box-shadow: 0 0 0 2px rgba(179, 18, 28, .5) inset; }
+.previa-Dragao{ background: radial-gradient(circle at 50% 64%, rgba(255, 150, 40, .8) 0 6%, transparent 14%), linear-gradient(135deg, #062413, #2c8046 45%, #051c0e); box-shadow: 0 0 0 2px rgba(255, 215, 90, .5) inset; }
+.previa-Cavaleiro{ background: linear-gradient(135deg, #61656e, #c9cfda 50%, #43464e); box-shadow: 0 0 0 2px rgba(190, 20, 40, .5) inset; }
 .previa-CircuitoNeon{ background: #050b12; box-shadow: 0 0 12px 3px #00eaff, inset 0 0 0 1px rgba(0, 234, 255, .5); }
-.previa-Samurai{ background: repeating-linear-gradient(90deg, #c81e2e, #c81e2e 10px, #f5f0e6 10px, #f5f0e6 20px); border-color: #111; }
-.previa-Runico{ background: #2b2b33; box-shadow: 0 0 12px 3px #c878ff; }
+.previa-Samurai{ background: linear-gradient(135deg, #5c0a12, #a8162a 50%, #3c060c); box-shadow: 0 0 0 2px rgba(255, 200, 80, .4) inset; }
+.previa-Runico{ background: radial-gradient(circle at 50% 50%, rgba(200, 120, 255, .5) 0 18%, transparent 40%), #26262e; box-shadow: 0 0 12px 3px #c878ff; }
 .previa-Titanio{ background: linear-gradient(135deg, #3a4048, #8a95a3, #20242a); box-shadow: 0 0 0 1px rgba(160, 190, 210, .6) inset; }
-.previa-Plasma{ background: radial-gradient(circle at 50% 50%, #f0d0ff, #b040ff 45%, #3c0078 90%); box-shadow: 0 0 14px 3px #b040ff; }
-.previa-Obsidiana{ background: #0a0a0d; box-shadow: 0 0 12px 3px rgba(150, 100, 255, .5); }
+.previa-Plasma{ background: radial-gradient(circle at 50% 50%, #f8e8ff, #c060ff 35%, #7020c0 70%, #1e0046 95%); box-shadow: 0 0 14px 3px #b040ff; }
+.previa-Obsidiana{ background: linear-gradient(135deg, #16121f, #060509 45%, #0d0a14 55%, #1d1830); box-shadow: 0 0 12px 3px rgba(150, 110, 255, .4), inset 0 0 0 1px rgba(120, 200, 170, .25); }
 .previa-Quimera{ background: linear-gradient(90deg, #ff5050, #50ff90, #5090ff, #ffe050); }
 .previa-Vazio{ background: #000; box-shadow: 0 0 0 3px rgba(120, 60, 200, .6) inset, 0 0 14px 2px rgba(120, 60, 200, .5); }
 .previa-Lendario{ background: linear-gradient(90deg, #ff3b3b, #ffb020, #f6ff3b, #3bff57, #3bb0ff, #b040ff); box-shadow: 0 0 16px 4px rgba(255, 215, 90, .6); }
 .previa-Aco{ background: linear-gradient(135deg, #4a4f57, #c4cad2, #2c3036); box-shadow: 0 0 0 1px rgba(200, 215, 230, .55) inset; }
-.previa-Bronze{ background: linear-gradient(135deg, #4a2c14, #c98a4b, #2c1808); box-shadow: 0 0 0 1px rgba(255, 200, 140, .5) inset; }
+.previa-Nebulosa{ background: radial-gradient(circle at 32% 30%, #e6c2ff, #9a5ae0 38%, #401c8c 68%, #0d0620); box-shadow: 0 0 10px 2px rgba(154, 90, 224, .55); }
 .previa-Cromada{ background: linear-gradient(135deg, #dfe4ea, #6b7280, #ffffff, #4b5563); box-shadow: 0 0 10px 2px rgba(255, 255, 255, .5) inset; }
-.previa-Mercurio{ background: radial-gradient(circle at 35% 30%, #ffffff, #b8bcc4 40%, #565b63 90%); box-shadow: 0 0 12px 2px rgba(200, 210, 220, .5); }
+.previa-Vitral{ background: conic-gradient(from 45deg, #d84fff, #4f8fff, #4fff9f, #fff04f, #d84fff); border: 2px solid #0f0c18; box-shadow: 0 0 10px 2px rgba(120, 90, 255, .45); }
+.previa-BuracoNegro{ background: radial-gradient(circle at 50% 50%, #000 0 16%, #ffe6aa 18% 22%, rgba(170, 60, 255, .45) 48%, #000 78%); box-shadow: 0 0 12px 3px rgba(255, 170, 60, .5); }
+.previa-Holografica{ background: linear-gradient(135deg, #ff9fd6, #9fffde, #9fd6ff, #ffe9a0); box-shadow: 0 0 12px 2px rgba(255, 180, 240, .5); }
+.previa-Brasil{ background: linear-gradient(135deg, #009c3b 28%, #ffdf00 50%, #009c3b 72%); }
+.previa-Tribal{ background: repeating-linear-gradient(0deg, #120b08, #120b08 3px, #ff5a1f 3px, #ff5a1f 4px, #120b08 4px, #120b08 7px, #ffb347 7px, #ffb347 8px); }
+.previa-Cometa{ background: radial-gradient(circle at 35% 35%, #ffffff, #9fd8ff 45%, rgba(40, 120, 220, .25)); box-shadow: 0 0 12px 3px rgba(142, 203, 255, .7); }
+.previa-Pixel{ background: conic-gradient(#00c060 25%, #007a3c 0 50%, #00c060 0 75%, #007a3c 0); background-size: 12px 12px; border: 2px solid #000; }
+.previa-Coracao{ background: #ff5c8a; }
+.previa-Abobora{ background: radial-gradient(circle at 50% 45%, transparent 0 26%, rgba(160, 64, 255, .35) 40%, transparent 60%), linear-gradient(180deg, #ff7518, #b34a00); box-shadow: 0 0 12px 3px rgba(160, 64, 255, .5); }
+.previa-Natalina{ background: radial-gradient(circle at 50% 42%, #ffe89a 0 10%, transparent 24%), radial-gradient(circle at 28% 62%, #ff3b3b 0 3px, transparent 4px), radial-gradient(circle at 68% 72%, #4da6ff 0 3px, transparent 4px), linear-gradient(180deg, #0c6e34, #084421); box-shadow: 0 0 12px 3px rgba(255, 215, 90, .45); }
 
 /* =========================================================
    RANKING
@@ -761,6 +813,157 @@ canvas{
     color: var(--border);
     transform: scale(.9);
     box-shadow: inset 0 2px 8px rgba(0, 0, 0, .4);
+}
+/* Adaptação por plataforma: no PC o D-pad some (joga
+   com teclado/mouse); no mobile ele fica maior e mais
+   confortável para os dedos. */
+body.plataforma-pc #dpad{
+    display: none;
+}
+body.plataforma-mobile .dpadBtn{
+    width: 62px;
+    height: 62px;
+    font-size: 23px;
+}
+body.plataforma-mobile .dpadRow{
+    gap: 14px;
+}
+@media (max-width: 380px){
+    body.plataforma-mobile .dpadBtn{
+        width: 56px;
+        height: 56px;
+        font-size: 21px;
+    }
+    body.plataforma-mobile .dpadRow{
+        gap: 10px;
+    }
+}
+
+/* =========================================================
+   TÍTULO RGB DO HEADER + NOTAS DE ATUALIZAÇÃO
+========================================================= */
+header > b{
+    background: linear-gradient(90deg, #ff4d4d, #ffb84d, #f5ff4d, #4dff88, #4dd2ff, #b84dff, #ff4d4d);
+    background-size: 400% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    animation: rgbFluxo 6s linear infinite;
+}
+@keyframes rgbFluxo{
+    0%{ background-position: 0% 50%; }
+    100%{ background-position: 400% 50%; }
+}
+#notasAtualizacao{
+    display: none;
+    position: fixed;
+    left: 4vw;
+    top: 64px;
+    bottom: 4vh;
+    width: min(34vw, 520px);
+    overflow-y: auto;
+    padding: 18px 20px;
+    border-radius: 16px;
+    background: rgba(0, 0, 0, .3);
+    border: 1px solid var(--border);
+    box-shadow: 0 14px 44px -12px rgba(0, 0, 0, .65);
+    backdrop-filter: blur(4px);
+    z-index: 4;
+}
+#notasAtualizacao h3{
+    margin: 0 0 14px;
+    font-size: 15px;
+    letter-spacing: 1px;
+    color: var(--border);
+}
+.notaItem{
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, .04);
+    border-left: 3px solid var(--border);
+}
+.notaItem b{
+    display: block;
+    font-size: 13.5px;
+    margin-bottom: 4px;
+}
+.notaItem p{
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.5;
+    opacity: .82;
+}
+@media (min-width: 900px){
+    body:has(#home:not(.hide)) #notasAtualizacao:not(.fechada){ display: block; }
+}
+/* No celular as notas só aparecem pelo botão, em tela cheia */
+@media (max-width: 899px){
+    #notasAtualizacao.aberta{
+        display: block;
+        left: 4vw;
+        right: 4vw;
+        top: 6vh;
+        bottom: 6vh;
+        width: auto;
+        z-index: 60;
+    }
+}
+.btnNotas{
+    width: 100%;
+    margin-top: 8px;
+    padding: 11px;
+    border-radius: 12px;
+    border: 1px dashed var(--border);
+    background: rgba(255, 255, 255, .03);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s ease, transform .1s ease;
+}
+/* No PC esses botões não precisam: notas e prévia já
+   aparecem sozinhas. Ficam disponíveis só no celular. */
+@media (min-width: 900px){
+    .btnNotas{ display: none; }
+}
+.btnNotas:hover{
+    background: color-mix(in srgb, var(--border) 18%, transparent);
+}
+.btnNotas:active{
+    transform: scale(.97);
+}
+.btnFecharNotas{
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: rgba(0, 0, 0, .4);
+    color: var(--text);
+    font-size: 14px;
+    cursor: pointer;
+    display: none;
+}
+@media (max-width: 899px){
+    .btnFecharNotas{ display: block; }
+}
+/* Prévia grande ligada pelo botão (útil no celular) */
+@media (max-width: 899px){
+    body.previaLigada #previaGrande{
+        display: flex;
+        left: 50%;
+        top: 46%;
+        transform: translate(-50%, -50%);
+        z-index: 40;
+    }
+    body.previaLigada #previaGrande canvas{
+        width: min(78vw, 340px);
+    }
 }
 
 /* =========================================================
@@ -1068,4 +1271,192 @@ canvas{
 }
 .btnFecharNick:hover{
     opacity: 1;
+}
+
+/* =========================================================
+   MODO ONLINE — CORRIDA FANTASMA
+========================================================= */
+.btnOnlineHome{
+    display: block;
+    width: min(370px, 90vw);
+    margin: 9px auto;
+    min-height: 52px;
+    font-size: 14px;
+    background: linear-gradient(135deg, #7a2fc0, #4a1490);
+    border: none;
+    font-weight: 700;
+    letter-spacing: .4px;
+    box-shadow: 0 14px 32px -12px rgba(122, 47, 192, .65), inset 0 1px 0 rgba(255, 255, 255, .25);
+}
+#modalOnline, #modalResultadoOnline{
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 6, 4, .72);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: grid;
+    place-items: center;
+    z-index: 45;
+    overflow-y: auto;
+    touch-action: pan-y;
+}
+#modalOnline > div, #modalResultadoOnline > div{
+    width: min(390px, 92vw);
+    padding: 28px 24px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 82%, white 4%), color-mix(in srgb, var(--bg) 88%, black 10%));
+    border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+    border-radius: 22px;
+    text-align: center;
+    box-shadow: 0 30px 70px -20px rgba(0, 0, 0, .75), 0 0 0 1px rgba(255, 255, 255, .04) inset, 0 0 40px -10px color-mix(in srgb, #7a2fc0 40%, transparent);
+    animation: popIn .28s ease;
+}
+#modalOnline h2, #modalResultadoOnline h2{
+    font-family: 'Press Start 2P', monospace;
+    font-size: 18px;
+    margin: 0 0 14px;
+    letter-spacing: .5px;
+    line-height: 1.5;
+    text-shadow: 0 0 20px color-mix(in srgb, #7a2fc0 60%, transparent);
+}
+#modalOnline input{
+    display: block;
+    width: 100%;
+    height: 50px;
+    margin: 0 0 10px;
+    border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, .05);
+    color: var(--text);
+    text-align: center;
+    text-transform: uppercase;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 14px;
+    letter-spacing: 4px;
+    outline: 0;
+    padding: 10px;
+}
+#modalOnline input:focus{
+    border-color: #7a2fc0;
+    box-shadow: 0 0 0 3px rgba(122, 47, 192, .3);
+}
+.onlineCodigoGrande{
+    font-family: 'Press Start 2P', monospace;
+    font-size: 16px;
+    margin: 4px 0 6px;
+    color: #fff;
+}
+.onlineCodigoGrande b{
+    color: #c88bff;
+    text-shadow: 0 0 16px rgba(122, 47, 192, .8);
+    cursor: pointer;
+    user-select: all;
+}
+#onlineJogadoresLista{
+    margin: 12px 0 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.onlineJogador{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    padding: 9px 12px;
+    font-size: 13.5px;
+    font-weight: 600;
+    background: rgba(255, 255, 255, .05);
+    border: 1px solid color-mix(in srgb, var(--border) 30%, transparent);
+    border-radius: 12px;
+    width: min(300px, 84vw);
+    margin: 0 auto;
+}
+.onlineDot{
+    width: 12px;
+    height: 12px;
+    min-width: 12px;
+    border-radius: 50%;
+    box-shadow: 0 0 8px currentColor;
+}
+#onlineResultadoLista{
+    margin: 6px 0 14px;
+}
+
+/* =========================================================
+   ONLINE EM TELA CHEIA — durante a partida online o
+   cabeçalho some, a HUD flutua sobre o mapa e o D-pad
+   é escondido (PC), aproveitando toda a tela.
+========================================================= */
+.app.telaCheiaJogo header{
+    display: none;
+}
+.app.telaCheiaJogo #game{
+    position: relative;
+}
+.app.telaCheiaJogo .hud{
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 6;
+    min-height: 0;
+    padding: 4px 12px;
+    margin: 0;
+    gap: 4px 8px;
+    font-size: 10.5px;
+    background: rgba(0, 0, 0, .32);
+    border: none;
+    box-shadow: none;
+    border-radius: 16px;
+    white-space: nowrap;
+    opacity: .82;
+    pointer-events: none;
+}
+.app.telaCheiaJogo .hud b{
+    font-size: 9.5px;
+}
+.app.telaCheiaJogo .hud span:not(:last-child)::after{
+    display: none;
+}
+.app.telaCheiaJogo .hud span{
+    padding-right: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
+}
+.app.telaCheiaJogo #wrap{
+    margin: 0;
+    border-radius: 0;
+    border: none;
+}
+/* D-pad some só no PC (mouse/teclado); no celular
+   (tela de toque) ele continua aparecendo. */
+@media (hover: hover) and (pointer: fine) {
+    .app.telaCheiaJogo #dpad{
+        display: none;
+    }
+}
+.app.telaCheiaJogo #wrap label{
+    top: 8px;
+    left: 8px;
+    background: rgba(0, 0, 0, .28);
+    backdrop-filter: blur(4px);
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 8.5px;
+    border: none;
+    opacity: .7;
+    pointer-events: none;
+}
+.app.telaCheiaJogo #toastEvento{
+    top: auto;
+    bottom: 12px;
+    background: rgba(0, 0, 0, .3);
+    backdrop-filter: blur(4px);
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 10.5px;
+    border: none;
+    opacity: .85;
+    pointer-events: none;
 }
